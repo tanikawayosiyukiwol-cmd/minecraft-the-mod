@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マインクラフトthe.modメンテナンス中のためこちらのサイトを表示中。マインクラフト公式ではありません！！！</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --dirt: #8B6914;
+    --grass-top: #5A9E2F;
+    --grass-side: #7A7A40;
+    --stone: #8A8A8A;
+    --wood: #9C7A3C;
+    --leaves: #3A7D1E;
+    --sky: #5BA3E0;
+    --water: #2E6DA4;
+    --sand: #D4B96A;
+    --gold: #F0C030;
+    --iron: #C0A882;
+    --diamond: #4CE0D0;
+    --lava: #FF6600;
+    --dark: #1A1A1A;
+    --text-main: #FFFFFF;
+    --text-shadow: #3F3F3F;
+    --ui-bg: rgba(0,0,0,0.75);
+    --border-pixel: 3px solid #000;
+    --hotbar: #8B8B8B;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Press Start 2P', monospace;
+    background-color: var(--sky);
+    color: var(--text-main);
+    min-height: 100vh;
+    overflow-x: hidden;
+    image-rendering: pixelated;
+  }
+
+  /* ===== PIXEL TEXT SHADOW ===== */
+  .pixel-text {
+    text-shadow: 3px 3px 0 var(--text-shadow);
+  }
+
+  /* ===== PIXEL BLOCK STYLE ===== */
+  .block {
+    border: 3px solid #000;
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.4), inset 4px 4px 0 rgba(255,255,255,0.15);
+    image-rendering: pixelated;
+  }
+
+  /* ===== SKY + CLOUDS ===== */
+  .sky-bg {
+    background-color: var(--sky);
+    background-image:
+      radial-gradient(ellipse 80px 40px at 15% 25%, rgba(255,255,255,0.9) 60%, transparent 70%),
+      radial-gradient(ellipse 60px 30px at 18% 22%, rgba(255,255,255,0.9) 60%, transparent 70%),
+      radial-gradient(ellipse 80px 40px at 65% 15%, rgba(255,255,255,0.9) 60%, transparent 70%),
+      radial-gradient(ellipse 60px 30px at 68% 12%, rgba(255,255,255,0.9) 60%, transparent 70%),
+      radial-gradient(ellipse 40px 25px at 85% 30%, rgba(255,255,255,0.85) 60%, transparent 70%);
+    position: relative;
+  }
+
+  /* ===== HEADER / TITLE ===== */
+  header {
+    padding: 40px 20px 0;
+    text-align: center;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .game-title {
+    font-size: clamp(24px, 5vw, 56px);
+    color: #FFFF55;
+    text-shadow: 4px 4px 0 #3F3F00, 6px 6px 0 rgba(0,0,0,0.5);
+    letter-spacing: 4px;
+    animation: titleFloat 3s ease-in-out infinite;
+    line-height: 1.4;
+  }
+
+  @keyframes titleFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .subtitle {
+    font-size: clamp(8px, 1.5vw, 14px);
+    color: #AAFFAA;
+    text-shadow: 2px 2px 0 #003300;
+    margin-top: 12px;
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+  }
+
+  /* ===== GROUND / TERRAIN ===== */
+  .terrain {
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+  }
+
+  .terrain-row {
+    display: flex;
+    width: 100%;
+  }
+
+  .terrain-row .grass-block {
+    flex: 1;
+    height: 32px;
+    background-color: var(--grass-top);
+    border-top: 4px solid #7AC043;
+    border-left: 1px solid rgba(0,0,0,0.3);
+    border-right: 1px solid rgba(0,0,0,0.3);
+    position: relative;
+  }
+
+  .terrain-row .grass-block::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 8px;
+    background: var(--grass-side);
+  }
+
+  .terrain-row.dirt-row .dirt-block {
+    flex: 1;
+    height: 32px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--dirt) 0px, var(--dirt) 31px,
+      rgba(0,0,0,0.3) 31px, rgba(0,0,0,0.3) 32px
+    );
+    border-bottom: 1px solid rgba(0,0,0,0.3);
+  }
+
+  /* ===== MAIN CONTENT AREA ===== */
+  .main-content {
+    background: linear-gradient(180deg, #8B6914 0%, #5C4010 100%);
+    padding: 40px 20px;
+    position: relative;
+  }
+
+  .main-content::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 32px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 32px);
+    pointer-events: none;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ===== SECTION TITLE ===== */
+  .section-title {
+    font-size: clamp(12px, 2.5vw, 20px);
+    color: #FFFF55;
+    text-shadow: 3px 3px 0 #3F3F00;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background: var(--gold);
+    border: 3px solid #000;
+    box-shadow: inset -3px -3px 0 rgba(0,0,0,0.4), inset 3px 3px 0 rgba(255,255,255,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ===== FEATURE CARDS (Inventory Slots) ===== */
+  .inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .inv-slot {
+    background: #8B8B8B;
+    border: 4px solid #000;
+    box-shadow:
+      inset -4px -4px 0 #3A3A3A,
+      inset 4px 4px 0 #CFCFCF;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .inv-slot:hover {
+    transform: scale(1.04);
+    box-shadow:
+      inset -4px -4px 0 #3A3A3A,
+      inset 4px 4px 0 #CFCFCF,
+      0 0 0 3px #FFFF55;
+  }
+
+  .inv-slot:active { transform: scale(0.97); }
+
+  .slot-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid #000;
+    box-shadow: inset -3px -3px 0 rgba(0,0,0,0.4), inset 3px 3px 0 rgba(255,255,255,0.2);
+  }
+
+  .slot-icon.diamond { background: var(--diamond); }
+  .slot-icon.gold { background: var(--gold); }
+  .slot-icon.iron { background: var(--iron); }
+  .slot-icon.leaves { background: var(--leaves); }
+  .slot-icon.lava { background: var(--lava); }
+  .slot-icon.wood { background: var(--wood); }
+
+  .slot-icon svg { width: 28px; height: 28px; }
+
+  .slot-name {
+    font-size: 9px;
+    color: #FFF;
+    text-shadow: 2px 2px 0 #000;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .slot-desc {
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: #DDD;
+    line-height: 1.4;
+    text-shadow: 1px 1px 0 #000;
+  }
+
+  .slot-count {
+    position: absolute;
+    bottom: 8px;
+    right: 10px;
+    font-size: 12px;
+    color: #FFF;
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  /* ===== CRAFTING TABLE SECTION ===== */
+  .crafting-section {
+    margin-bottom: 48px;
+  }
+
+  .crafting-ui {
+    background: #C6C6C6;
+    border: 4px solid #000;
+    box-shadow: inset -6px -6px 0 #555, inset 6px 6px 0 #FFF;
+    padding: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .craft-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 56px);
+    gap: 4px;
+  }
+
+  .craft-cell {
+    background: #8B8B8B;
+    border: 3px solid #000;
+    box-shadow: inset -3px -3px 0 #3A3A3A, inset 3px 3px 0 #CFCFCF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    cursor: pointer;
+    transition: background 0.1s;
+    user-select: none;
+  }
+
+  .craft-cell:hover { background: #9F9F9F; }
+  .craft-cell.filled { background: #7A7A7A; }
+
+  .craft-arrow {
+    font-size: 36px;
+    color: #555;
+    text-shadow: 2px 2px 0 #FFF;
+    padding: 0 8px;
+  }
+
+  .craft-result {
+    width: 72px;
+    height: 72px;
+    background: #8B8B8B;
+    border: 4px solid #000;
+    box-shadow: inset -4px -4px 0 #3A3A3A, inset 4px 4px 0 #CFCFCF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .craft-result:hover { transform: scale(1.08); }
+  .craft-result.ready {
+    box-shadow: inset -4px -4px 0 #3A3A3A, inset 4px 4px 0 #CFCFCF, 0 0 0 3px #FFFF55;
+    animation: glowReady 1s ease-in-out infinite;
+  }
+
+  @keyframes glowReady {
+    0%, 100% { box-shadow: inset -4px -4px 0 #3A3A3A, inset 4px 4px 0 #CFCFCF, 0 0 0 3px #FFFF55; }
+    50% { box-shadow: inset -4px -4px 0 #3A3A3A, inset 4px 4px 0 #CFCFCF, 0 0 0 6px #FFD700, 0 0 16px #FFD700; }
+  }
+
+  .craft-label {
+    font-size: 8px;
+    color: #333;
+    text-shadow: none;
+    text-align: center;
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* ===== HP / XP BARS ===== */
+  .stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .stat-card {
+    flex: 1;
+    min-width: 200px;
+    background: #1A1A1A;
+    border: 4px solid #000;
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.6), inset 4px 4px 0 rgba(255,255,255,0.05);
+    padding: 16px;
+  }
+
+  .stat-label {
+    font-size: 8px;
+    color: #AAA;
+    text-shadow: 1px 1px 0 #000;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stat-bar-bg {
+    width: 100%;
+    height: 16px;
+    background: #3A3A3A;
+    border: 2px solid #000;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-bar-fill {
+    height: 100%;
+    position: relative;
+    transition: width 1s ease-out;
+  }
+
+  .stat-bar-fill.hp { background: #FF3333; }
+  .stat-bar-fill.xp { background: #7EC832; }
+  .stat-bar-fill.food { background: #D2A061; }
+  .stat-bar-fill.mana { background: #4488FF; }
+
+  .stat-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px; right: 2px;
+    height: 4px;
+    background: rgba(255,255,255,0.3);
+  }
+
+  .stat-value {
+    font-size: 9px;
+    color: #FFF;
+    text-shadow: 1px 1px 0 #000;
+    margin-top: 6px;
+  }
+
+  /* ===== HOTBAR ===== */
+  .hotbar-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 48px;
+  }
+
+  .hotbar {
+    display: flex;
+    gap: 4px;
+    background: #8B8B8B;
+    border: 4px solid #000;
+    padding: 6px;
+    box-shadow: inset -4px -4px 0 #3A3A3A, inset 4px 4px 0 #CFCFCF;
+  }
+
+  .hotbar-slot {
+    width: 54px;
+    height: 54px;
+    background: #8B8B8B;
+    border: 3px solid #000;
+    box-shadow: inset -3px -3px 0 #3A3A3A, inset 3px 3px 0 #CFCFCF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.1s;
+    user-select: none;
+  }
+
+  .hotbar-slot:hover { background: #A0A0A0; }
+  .hotbar-slot.active {
+    border: 3px solid #FFF;
+    box-shadow: inset -3px -3px 0 #3A3A3A, inset 3px 3px 0 #CFCFCF, 0 0 0 2px #FFF;
+  }
+
+  .hotbar-num {
+    position: absolute;
+    top: 2px; left: 4px;
+    font-size: 8px;
+    color: #DDD;
+    text-shadow: 1px 1px 0 #000;
+  }
+
+  /* ===== BIOME SHOWCASE ===== */
+  .biomes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0;
+    margin-bottom: 48px;
+    border: 4px solid #000;
+    overflow: hidden;
+  }
+
+  .biome {
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s;
+    border-right: 2px solid rgba(0,0,0,0.4);
+  }
+
+  .biome:last-child { border-right: none; }
+  .biome:hover { transform: scale(1.03); z-index: 2; }
+
+  .biome.forest { background: linear-gradient(180deg, #5BA3E0 0%, #3A7D1E 60%, #2A5C10 100%); }
+  .biome.desert { background: linear-gradient(180deg, #E8C96A 0%, #D4A830 60%, #A07820 100%); }
+  .biome.snow { background: linear-gradient(180deg, #C8E8FF 0%, #FFFFFF 60%, #A0C8E0 100%); }
+  .biome.nether { background: linear-gradient(180deg, #330000 0%, #8B0000 50%, #FF4400 100%); }
+  .biome.ocean { background: linear-gradient(180deg, #5BA3E0 0%, #2E6DA4 50%, #1A3D6A 100%); }
+
+  .biome-name {
+    font-size: 8px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.8);
+    letter-spacing: 1px;
+    z-index: 1;
+  }
+
+  .biome-icon {
+    font-size: 32px;
+    margin-bottom: 6px;
+    z-index: 1;
+    filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.6));
+  }
+
+  /* ===== CHAT LOG ===== */
+  .chat-box {
+    background: rgba(0,0,0,0.7);
+    border: 3px solid #000;
+    padding: 12px;
+    margin-bottom: 48px;
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+  }
+
+  .chat-line {
+    margin-bottom: 4px;
+    animation: fadeInChat 0.3s ease;
+  }
+
+  @keyframes fadeInChat {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .chat-name { color: #5555FF; }
+  .chat-name.green { color: #55FF55; }
+  .chat-name.yellow { color: #FFFF55; }
+  .chat-name.red { color: #FF5555; }
+  .chat-msg { color: #FFFFFF; }
+  .chat-system { color: #FFFF55; }
+
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .chat-input {
+    flex: 1;
+    background: rgba(0,0,0,0.5);
+    border: 2px solid #555;
+    color: #FFF;
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    padding: 6px 10px;
+    outline: none;
+  }
+
+  .chat-input:focus { border-color: #FFF; }
+
+  .mc-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: #FFF;
+    background: #5A5A5A;
+    border: 3px solid #000;
+    box-shadow: inset -3px -3px 0 rgba(0,0,0,0.5), inset 3px 3px 0 rgba(255,255,255,0.2);
+    padding: 8px 14px;
+    cursor: pointer;
+    text-shadow: 2px 2px 0 #000;
+    transition: all 0.1s;
+    letter-spacing: 1px;
+  }
+
+  .mc-btn:hover {
+    background: #6E6E6E;
+    box-shadow: inset -3px -3px 0 rgba(0,0,0,0.5), inset 3px 3px 0 rgba(255,255,255,0.3), 0 0 0 2px #AAA;
+  }
+
+  .mc-btn:active {
+    transform: scale(0.96);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5), inset 2px 2px 0 rgba(255,255,255,0.2);
+  }
+
+  .mc-btn.green-btn {
+    background: #5A8A3A;
+    box-shadow: inset -3px -3px 0 rgba(0,0,0,0.5), inset 3px 3px 0 rgba(255,255,255,0.15);
+  }
+
+  .mc-btn.green-btn:hover { background: #6BAA46; }
+
+  /* ===== CTA BUTTONS ===== */
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+
+  .cta-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(8px, 1.5vw, 13px);
+    padding: 14px 28px;
+    text-decoration: none;
+    letter-spacing: 2px;
+    transition: all 0.1s;
+    cursor: pointer;
+    display: inline-block;
+  }
+
+  .cta-btn.play {
+    color: #FFF;
+    background: #5A8A3A;
+    border: 4px solid #000;
+    box-shadow: inset -5px -5px 0 rgba(0,0,0,0.5), inset 5px 5px 0 rgba(255,255,255,0.15);
+    text-shadow: 3px 3px 0 #1A3A0A;
+  }
+
+  .cta-btn.play:hover {
+    background: #6BAA46;
+    transform: scale(1.04);
+  }
+
+  .cta-btn.store {
+    color: #FFF;
+    background: #4A6A9A;
+    border: 4px solid #000;
+    box-shadow: inset -5px -5px 0 rgba(0,0,0,0.5), inset 5px 5px 0 rgba(255,255,255,0.15);
+    text-shadow: 3px 3px 0 #1A2A5A;
+  }
+
+  .cta-btn.store:hover {
+    background: #5A7ABB;
+    transform: scale(1.04);
+  }
+
+  /* ===== STONE FLOOR ===== */
+  .stone-floor {
+    background-color: #888;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.1) 0 1px, transparent 1px 32px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.1) 0 1px, transparent 1px 32px);
+    padding: 32px 20px;
+    position: relative;
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    background: #1A1A1A;
+    border-top: 4px solid #000;
+    padding: 24px 20px;
+    text-align: center;
+  }
+
+  .footer-text {
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    color: #888;
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  .footer-text a {
+    color: #55FF55;
+    text-decoration: none;
+  }
+
+  .footer-text a:hover { color: #AAFFAA; }
+
+  /* ===== PIXEL PARTICLES ===== */
+  @keyframes floatParticle {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+  }
+
+  .particle {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    pointer-events: none;
+    z-index: 999;
+    animation: floatParticle 2s ease-out forwards;
+  }
+
+  /* ===== TOAST NOTIFICATION ===== */
+  .toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.85);
+    border: 3px solid #FFFF55;
+    padding: 12px 16px;
+    font-size: 9px;
+    color: #FFF;
+    text-shadow: 2px 2px 0 #000;
+    z-index: 1000;
+    transform: translateX(200px);
+    transition: transform 0.3s;
+    max-width: 260px;
+    letter-spacing: 1px;
+    line-height: 1.6;
+  }
+
+  .toast.show { transform: translateX(0); }
+  .toast-icon { font-size: 20px; margin-bottom: 6px; display: block; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 600px) {
+    .craft-arrow { display: none; }
+    .crafting-ui { justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toast-icon">🎮</span>
+  <span id="toast-msg">アイテムを入手しました！</span>
+</div>
+
+<!-- ===== SKY + HEADER ===== -->
+<div class="sky-bg">
+  <header>
+    <div class="game-title pixel-text">⛏ CRAFTWORLD ⛏</div>
+    <div class="subtitle">～ ブロックで世界をつくろう ～</div>
+  </header>
+
+  <!-- NAV HOTBAR -->
+  <div class="hotbar-section" style="margin-top:20px;margin-bottom:0;">
+    <nav class="hotbar" role="navigation" aria-label="メインナビ">
+      <div class="hotbar-slot active" onclick="navClick(this,'🏠','ホームへ！')" title="ホーム">
+        <span class="hotbar-num">1</span>🏠
+      </div>
+      <div class="hotbar-slot" onclick="navClick(this,'🌍','ワールドを探索！')" title="ワールド">
+        <span class="hotbar-num">2</span>🌍
+      </div>
+      <div class="hotbar-slot" onclick="navClick(this,'🎒','インベントリを開いた')" title="インベントリ">
+        <span class="hotbar-num">3</span>🎒
+      </div>
+      <div class="hotbar-slot" onclick="navClick(this,'🗡️','武器を装備！')" title="武器">
+        <span class="hotbar-num">4</span>🗡️
+      </div>
+      <div class="hotbar-slot" onclick="navClick(this,'🍖','食料を補充！')" title="食料">
+        <span class="hotbar-num">5</span>🍖
+      </div>
+      <div class="hotbar-slot" onclick="navClick(this,'💎','ダイヤを発見！')" title="ダイヤ">
+        <span class="hotbar-num">6</span>💎
+      </div>
+      <div class="hotbar-slot" onclick="navClick(this,'📖','本を読んでいる...')" title="本">
+        <span class="hotbar-num">7</span>📖
+      </div>
+      <div class="hotbar-slot" onclick="navClick(this,'⚙️','設定を開いた')" title="設定">
+        <span class="hotbar-num">8</span>⚙️
+      </div>
+      <div class="hotbar-slot" onclick="navClick(this,'🏆','実績を確認！')" title="実績">
+        <span class="hotbar-num">9</span>🏆
+      </div>
+    </nav>
+  </div>
+</div>
+
+<!-- TERRAIN -->
+<div class="terrain">
+  <div class="terrain-row">
+    <div class="grass-block"></div><div class="grass-block"></div>
+    <div class="grass-block"></div><div class="grass-block"></div>
+    <div class="grass-block"></div><div class="grass-block"></div>
+    <div class="grass-block"></div><div class="grass-block"></div>
+    <div class="grass-block"></div><div class="grass-block"></div>
+    <div class="grass-block"></div><div class="grass-block"></div>
+  </div>
+  <div class="terrain-row dirt-row">
+    <div class="dirt-block"></div><div class="dirt-block"></div>
+    <div class="dirt-block"></div><div class="dirt-block"></div>
+    <div class="dirt-block"></div><div class="dirt-block"></div>
+    <div class="dirt-block"></div><div class="dirt-block"></div>
+    <div class="dirt-block"></div><div class="dirt-block"></div>
+    <div class="dirt-block"></div><div class="dirt-block"></div>
+  </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="main-content">
+  <div class="container">
+
+    <!-- HP / STATS -->
+    <section style="margin-bottom:48px;">
+      <h2 class="section-title pixel-text">ステータス</h2>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">❤️ HEALTH</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill hp" style="width:80%"></div></div>
+          <div class="stat-value">80 / 100 HP</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">⭐ EXPERIENCE</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill xp" style="width:62%"></div></div>
+          <div class="stat-value">Level 23 — 62%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">🍗 HUNGER</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill food" style="width:45%"></div></div>
+          <div class="stat-value">9 / 20 🍗</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">🔮 MANA</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill mana" style="width:90%"></div></div>
+          <div class="stat-value">90 / 100 MP</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURE INVENTORY -->
+    <section>
+      <h2 class="section-title pixel-text">インベントリ</h2>
+      <div class="inventory-grid">
+
+        <div class="inv-slot" onclick="pickItem(this,'💎','ダイヤのツルハシ')">
+          <div class="slot-icon diamond">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><polygon points="12,2 22,9 12,22 2,9"/></svg>
+          </div>
+          <div class="slot-name">ダイヤモンド</div>
+          <div class="slot-desc">最強の素材。深い地下に眠る伝説のブロック。採掘難度★★★★★</div>
+          <div class="slot-count">×3</div>
+        </div>
+
+        <div class="inv-slot" onclick="pickItem(this,'🪵','木材を入手！')">
+          <div class="slot-icon wood">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          </div>
+          <div class="slot-name">オークの木材</div>
+          <div class="slot-desc">建築の基本素材。家を建てるのに最適。どこでも見つかる。</div>
+          <div class="slot-count">×64</div>
+        </div>
+
+        <div class="inv-slot" onclick="pickItem(this,'🔥','溶岩バケツを入手！')">
+          <div class="slot-icon lava">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 16s1.5-2 4-2 4 2 4 2"/><path d="M12 8v4"/></svg>
+          </div>
+          <div class="slot-name">溶岩バケツ</div>
+          <div class="slot-desc">燃料として最強。製錬炉に使えば超効率。取扱い注意！</div>
+          <div class="slot-count">×1</div>
+        </div>
+
+        <div class="inv-slot" onclick="pickItem(this,'🌿','木の葉を入手！')">
+          <div class="slot-icon leaves">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M21 3L3 21M21 3H15M21 3v6"/><path d="M3 21c3-3 6-6 9-6s6 3 9 6"/></svg>
+          </div>
+          <div class="slot-name">木の葉ブロック</div>
+          <div class="slot-desc">木を育てると自然につく。緑あふれる森を作ろう。</div>
+          <div class="slot-count">×128</div>
+        </div>
+
+        <div class="inv-slot" onclick="pickItem(this,'⚔️','鉄の剣を入手！')">
+          <div class="slot-icon iron">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><line x1="12" y1="2" x2="12" y2="18"/><line x1="8" y1="18" x2="16" y2="18"/><line x1="6" y1="14" x2="18" y2="14"/></svg>
+          </div>
+          <div class="slot-name">鉄インゴット</div>
+          <div class="slot-desc">武器・防具・道具に大活躍。石炭で鉄鉱石を製錬して作る。</div>
+          <div class="slot-count">×32</div>
+        </div>
+
+        <div class="inv-slot" onclick="pickItem(this,'✨','金の指輪を入手！')">
+          <div class="slot-icon gold">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>
+          </div>
+          <div class="slot-name">金インゴット</div>
+          <div class="slot-desc">ピグリンが大好き。取引に使える貴重な素材。見た目が豪華！</div>
+          <div class="slot-count">×16</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- CRAFTING TABLE -->
+    <section class="crafting-section">
+      <h2 class="section-title pixel-text">クラフティング台</h2>
+      <div class="crafting-ui">
+        <div>
+          <div class="craft-grid" id="craftGrid">
+            <div class="craft-cell" data-i="0" onclick="craftClick(this)">🪵</div>
+            <div class="craft-cell" data-i="1" onclick="craftClick(this)">🪵</div>
+            <div class="craft-cell" data-i="2" onclick="craftClick(this)">🪵</div>
+            <div class="craft-cell filled" data-i="3" onclick="craftClick(this)">🥢</div>
+            <div class="craft-cell" data-i="4" onclick="craftClick(this)"></div>
+            <div class="craft-cell" data-i="5" onclick="craftClick(this)"></div>
+            <div class="craft-cell filled" data-i="6" onclick="craftClick(this)">🥢</div>
+            <div class="craft-cell" data-i="7" onclick="craftClick(this)"></div>
+            <div class="craft-cell" data-i="8" onclick="craftClick(this)"></div>
+          </div>
+          <div class="craft-label">クラフトグリッド</div>
+        </div>
+        <div class="craft-arrow">▶</div>
+        <div style="text-align:center;">
+          <div class="craft-result ready" id="craftResult" onclick="collectCraft()">⛏️</div>
+          <div class="craft-label">木のツルハシ</div>
+        </div>
+      </div>
+      <p style="font-family:'VT323',monospace;font-size:18px;color:#CCC;text-shadow:1px 1px 0 #000;margin-top:12px;text-align:center;">
+        クリックしてアイテムを変えたり、結果を受け取ろう！
+      </p>
+    </section>
+
+    <!-- BIOMES -->
+    <section style="margin-bottom:48px;">
+      <h2 class="section-title pixel-text">バイオーム</h2>
+      <div class="biomes">
+        <div class="biome forest" onclick="showToast('🌲','森のバイオームへ！木材がたくさん！')">
+          <div class="biome-icon">🌲</div>
+          <div class="biome-name">FOREST</div>
+        </div>
+        <div class="biome desert" onclick="showToast('🏜️','砂漠のバイオーム！砂岩を探そう！')">
+          <div class="biome-icon">🏜️</div>
+          <div class="biome-name">DESERT</div>
+        </div>
+        <div class="biome snow" onclick="showToast('❄️','雪原バイオーム！極寒の世界！')">
+          <div class="biome-icon">❄️</div>
+          <div class="biome-name">TUNDRA</div>
+        </div>
+        <div class="biome nether" onclick="showToast('🔥','ネザーへようこそ！危険がいっぱい！')">
+          <div class="biome-icon">🌋</div>
+          <div class="biome-name">NETHER</div>
+        </div>
+        <div class="biome ocean" onclick="showToast('🌊','海洋バイオーム！珊瑚礁を探そう！')">
+          <div class="biome-icon">🌊</div>
+          <div class="biome-name">OCEAN</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAT -->
+    <section style="margin-bottom:48px;">
+      <h2 class="section-title pixel-text">チャット</h2>
+      <div class="chat-box" role="log" aria-live="polite">
+        <div class="chat-line"><span class="chat-system">[サーバー] CraftWorld にログインしました</span></div>
+        <div class="chat-line"><span class="chat-name green">Steve</span><span class="chat-msg">: みんな！ダイヤ採掘に行こうぜ！</span></div>
+        <div class="chat-line"><span class="chat-name yellow">Alex</span><span class="chat-msg">: 了解！y=-60まで掘ったら見つかるよ！</span></div>
+        <div class="chat-line"><span class="chat-name red">Creeper</span><span class="chat-msg">: ........</span></div>
+        <div class="chat-line"><span class="chat-name green">Steve</span><span class="chat-msg">: 逃げろ！！！💥</span></div>
+        <div id="chatLog"></div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chatInput" type="text" placeholder="メッセージを入力..." maxlength="50"
+          onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="mc-btn green-btn" onclick="sendChat()">送信</button>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <div class="cta-row">
+      <a href="#" class="cta-btn play" onclick="showToast('🎮','ゲームを起動しています...');return false;">▶ PLAY NOW</a>
+      <a href="#" class="cta-btn store" onclick="showToast('🛍️','ストアを開いています...');return false;">🛒 STORE</a>
+    </div>
+
+  </div>
+</main>
+
+<!-- STONE FLOOR -->
+<div class="stone-floor">
+  <div style="max-width:1100px;margin:0 auto;display:flex;flex-wrap:wrap;gap:16px;justify-content:center;">
+    <button class="mc-btn" onclick="showToast('📝','アップデートノートを確認！')">📋 更新ログ</button>
+    <button class="mc-btn" onclick="showToast('👥','コミュニティに参加！')">👥 コミュニティ</button>
+    <button class="mc-btn" onclick="showToast('🗺️','マップを開いた！')">🗺️ ワールドマップ</button>
+    <button class="mc-btn" onclick="showToast('📚','攻略Wikiを開いた！')">📚 Wiki</button>
+    <button class="mc-btn" onclick="showToast('🏆','実績ページを表示！')">🏆 実績</button>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-text">
+    ⛏ CraftWorld — Made with Blocks &amp; Love ❤️<br>
+    <a href="#">公式ではありません</a> | <a href="#">マインクラフトthe.modメンテナンス中</a> | <a href="#">マインクラフト風のサイト</a>
+  </div>
+  <div style="font-family:'VT323',monospace;font-size:16px;color:#555;margin-top:8px;text-shadow:none;">
+    © 2026 CraftWorld. Not affiliated with Mojang or Microsoft.
+  </div>
+</footer>
+
+<script>
+// ===== TOAST =====
+let toastTimer;
+function showToast(icon, msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  spawnParticles();
+}
+
+// ===== PARTICLES =====
+function spawnParticles() {
+  const colors = ['#FFFF55','#55FF55','#55FFFF','#FF5555','#FF55FF','#AAAAFF'];
+  for (let i = 0; i < 6; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `
+      left:${20 + Math.random()*60}vw;
+      bottom:${20 + Math.random()*40}vh;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      animation-delay:${Math.random()*0.5}s;
+      animation-duration:${1.5+Math.random()}s;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 2500);
+  }
+}
+
+// ===== HOTBAR NAV =====
+function navClick(el, icon, msg) {
+  document.querySelectorAll('.hotbar-slot').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  showToast(icon, msg);
+}
+
+// ===== INVENTORY PICK =====
+function pickItem(el, icon, msg) {
+  showToast(icon, msg);
+  el.style.transform = 'scale(0.93)';
+  setTimeout(() => el.style.transform = '', 200);
+  const cnt = el.querySelector('.slot-count');
+  if (cnt) {
+    const n = parseInt(cnt.textContent.replace('×',''));
+    if (n > 0) cnt.textContent = `×${n}`;
+  }
+}
+
+// ===== CRAFTING =====
+const craftItems = ['🪵','🪨','🥢','💎','⚗️','🌿','🔥','❄️','⭐',''];
+const craftResults = {
+  '🪵🪵🪵🥢🥢': { icon: '⛏️', name: '木のツルハシ' },
+  '🪨🪨🪨🥢🥢': { icon: '⛏', name: '石のツルハシ' },
+  '💎💎💎🥢🥢': { icon: '💎⛏', name: 'ダイヤのツルハシ' },
+  '🪵🪵🪵🪵🥢🪵🪵🥢🪵': { icon: '🛖', name: '木の小屋' },
+};
+
+function craftClick(cell) {
+  const items = craftItems;
+  const cur = cell.textContent;
+  const idx = items.indexOf(cur);
+  const next = items[(idx + 1) % items.length];
+  cell.textContent = next;
+  cell.classList.toggle('filled', next !== '');
+  updateCraftResult();
+}
+
+function updateCraftResult() {
+  const cells = document.querySelectorAll('.craft-cell');
+  const key = Array.from(cells).map(c => c.textContent).filter(Boolean).join('');
+  const res = craftResults[key];
+  const resultEl = document.getElementById('craftResult');
+  const label = resultEl.nextElementSibling;
+  if (res) {
+    resultEl.textContent = res.icon;
+    resultEl.classList.add('ready');
+    label.textContent = res.name;
+  } else {
+    resultEl.textContent = '❓';
+    resultEl.classList.remove('ready');
+    label.textContent = 'レシピ不明';
+  }
+}
+
+function collectCraft() {
+  const resultEl = document.getElementById('craftResult');
+  if (resultEl.classList.contains('ready')) {
+    showToast(resultEl.textContent, document.getElementById('craftResult').nextElementSibling.textContent + 'を作成！');
+    spawnParticles();
+  } else {
+    showToast('❓','レシピが違います...');
+  }
+}
+
+// ===== CHAT =====
+const chatNames = [
+  { name: 'Notch', cls: 'yellow' },
+  { name: 'Herobrine', cls: 'red' },
+  { name: 'Alex', cls: 'green' },
+  { name: 'Steve', cls: '' },
+];
+const autoMsgs = [
+  'ダイヤ見つけた！！',
+  'クリーパーが来る！逃げて！',
+  'エンドラを倒した！！',
+  '村人に取引してもらった',
+  '誰かベッド持ってる？',
+  'ネザーに行ってみた',
+  '拠点の場所を教えて！',
+  'スケルトンに撃たれたｗ',
+  '待ってｗクリーパーに家破壊されたｗｗｗｗ',
+];
+
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  addChatLine('あなた', '', msg);
+  input.value = '';
+  setTimeout(() => {
+    const r = chatNames[Math.floor(Math.random() * chatNames.length)];
+    const m = autoMsgs[Math.floor(Math.random() * autoMsgs.length)];
+    addChatLine(r.name, r.cls, m);
+  }, 800 + Math.random() * 1200);
+}
+
+function addChatLine(name, cls, msg) {
+  const log = document.getElementById('chatLog');
+  const div = document.createElement('div');
+  div.className = 'chat-line';
+  div.innerHTML = `<span class="chat-name ${cls}">${name}</span><span class="chat-msg">: ${msg}</span>`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  if (log.children.length > 12) log.removeChild(log.children[0]);
+}
+
+// ===== KEYBOARD HOTBAR =====
+document.addEventListener('keydown', e => {
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= 9) {
+    const slots = document.querySelectorAll('.hotbar-slot');
+    if (slots[n-1]) slots[n-1].click();
+  }
+});
+</script>
+</body>
+</html>
