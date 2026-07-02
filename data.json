@@ -1,0 +1,15 @@
+[
+  {
+    "type": "mod",
+    "title": "The Mod（ルビーMod）",
+    "desc": "Minecraft Java版に新素材「ルビー」と、装飾・収納用の「ルビーブロック」を追加するシンプルなForge Modです。",
+    "tags": ["Forge", "1.20.1", "装飾"],
+    "thumb": "💎",
+    "ver": "Java 1.20.1",
+    "dl": 0,
+    "url": "the-mod-1.0.0.jar",
+    "isNew": true,
+    "byAI": true,
+    "published": true
+  }
+]
