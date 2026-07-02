@@ -422,7 +422,7 @@ function cardHTML(item){
       ${item.byAI?'<span class="ai-badge">AI</span>':""}
     </div>
     <div class="card-body">
-      <div class="card-title">${item.title}</div>
+      <div class="card-title">${item.detailUrl?`<a href="${item.detailUrl}" style="color:inherit;text-decoration:none">${item.title}</a>`:item.title}</div>
       <div class="card-ver">${item.ver||""}</div>
       <p class="card-desc">${item.desc||""}</p>
       <div class="card-tags">${(item.tags||[]).map(t=>`<span class="ctag">${t}</span>`).join("")}</div>
