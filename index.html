@@ -414,7 +414,7 @@ let filter={ver:"all",cat:"all",search:""}, showN=9;
 
 function cardHTML(item){
   const c=TC[item.type]||"--cyan";
-  const clickAttr=item.detailUrl?`onclick="location.href='${item.detailUrl}'" style="--card-c:var(${c});cursor:pointer"`:`style="--card-c:var(${c})"`;
+  const clickAttr=item.detailUrl?`onclick="pageGoTo('${item.detailUrl}')" style="--card-c:var(${c});cursor:pointer"`:`style="--card-c:var(${c})"`;
   return `<div class="card" ${clickAttr}>
     <div class="card-thumb">
       ${item.thumb||"📦"}
@@ -520,5 +520,6 @@ window.addEventListener("storage", e=>{ if(e.key==="mc_data") renderAll() });
 
 loadStaticData().then(renderAll);
 </script>
+<script src="transition.js"></script>
 </body>
 </html>
