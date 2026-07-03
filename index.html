@@ -242,7 +242,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   </ul>
   <div class="top-search" style="margin-left:auto">
     <span style="color:var(--muted);font-size:13px">🔍</span>
-    <input type="text" placeholder="検索..." id="gsearch" oninput="doSearch(this.value)">
+    <input type="text" placeholder="検索..." id="gsearch" onkeydown="if(event.key==='Enter'){location.href='search.html?q='+encodeURIComponent(this.value)}">
   </div>
 </nav>
 
@@ -372,10 +372,10 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
         <li><a href="#ranking">ランキング</a></li>
       </ul></div>
       <div class="footer-col"><h4>バージョン</h4><ul>
-        <li><a href="#">Java 1.20.x</a></li>
-        <li><a href="#">Java 1.19.x</a></li>
-        <li><a href="#">統合版 1.20.x</a></li>
-        <li><a href="#">統合版 1.21.x</a></li>
+        <li><a href="index.html?ver=1.20#mods">Java 1.20.x</a></li>
+        <li><a href="index.html?ver=1.19#mods">Java 1.19.x</a></li>
+        <li><a href="index.html?ver=bedrock#mods">統合版 1.20.x</a></li>
+        <li><a href="index.html?ver=bedrock#mods">統合版 1.21.x</a></li>
       </ul></div>
       <div class="footer-col"><h4>サイト情報</h4><ul>
         <li><a href="terms.html">利用規約</a></li>
@@ -449,10 +449,10 @@ function renderAll(){
   const worlds=pub.filter(x=>x.type==="world");
   const packs=pub.filter(x=>x.type==="pack");
 
-  // featured
+  // featured: 追加日時(addedAt)が一番新しいものを自動で表示する
   const fw=document.getElementById("featured-wrap");
   if(pub.length){
-    const f=pub[0];
+    const f=pub.reduce((a,b)=>(b.addedAt||0)>(a.addedAt||0)?b:a, pub[0]);
     fw.style.display="block";
     document.getElementById("feat-thumb").childNodes[0].textContent=f.thumb||"📦";
     document.getElementById("feat-eyebrow").textContent="// "+TN[f.type]+" — FEATURED";
@@ -518,7 +518,21 @@ function doSearch(q){filter.search=q.toLowerCase();showN=9;renderAll()}
 // localStorage の変更を監視して自動更新
 window.addEventListener("storage", e=>{ if(e.key==="mc_data") renderAll() });
 
-loadStaticData().then(renderAll);
+loadStaticData().then(function(){
+  renderAll();
+  // フッターの「バージョン」リンクなどで ?ver=xxx が付いてきた場合、
+  // 該当するバージョンチップを自動でONにして、Mod一覧までスクロールする
+  const params = new URLSearchParams(location.search);
+  const ver = params.get("ver");
+  if(ver){
+    const chip = Array.from(document.querySelectorAll("#ver-chips .chip"))
+      .find(c => c.getAttribute("onclick") === `fVer(this,'${ver}')`);
+    if(chip){
+      fVer(chip, ver);
+      document.getElementById("mods").scrollIntoView({behavior:"smooth"});
+    }
+  }
+});
 </script>
 <script src="transition.js"></script>
 </body>
