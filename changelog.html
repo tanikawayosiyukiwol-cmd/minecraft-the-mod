@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>更新履歴 | マインクラフト.the.Mod</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07101f;--surface:#0e1d33;--border:rgba(0,200,255,.12);--border2:rgba(0,200,255,.22);
+  --cyan:#00c8ff;--gold:#ffc400;--green:#1ddb6e;--text:#e8f1ff;--muted:#5a7a9a;--muted2:#3a5570;
+  --pixel:"Press Start 2P";--sans:"Noto Sans JP",sans-serif;--mono:"JetBrains Mono",monospace;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+.wrap{max-width:720px;margin:0 auto;padding:0 1.5rem}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(7,16,31,.94);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border2);height:56px;display:flex;align-items:center;padding:0 1.5rem}
+.topbar a{color:var(--muted);text-decoration:none;font-size:13px}
+.topbar a:hover{color:var(--cyan)}
+h1{font-family:var(--pixel);font-size:clamp(13px,3vw,18px);line-height:1.9;color:#fff;padding:2.5rem 0 1.6rem}
+.timeline{position:relative;padding-left:1.6rem;border-left:2px solid var(--border2)}
+.entry{position:relative;margin-bottom:1.6rem}
+.entry::before{content:"";position:absolute;left:-1.85rem;top:.3rem;width:10px;height:10px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 8px rgba(0,200,255,.6)}
+.entry .date{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:.3rem}
+.entry .tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:.15rem .5rem;border-radius:10px;
+  margin-right:.4rem;background:rgba(29,219,110,.1);border:1px solid rgba(29,219,110,.3);color:var(--green)}
+.entry .tag.fix{background:rgba(255,196,0,.1);border-color:rgba(255,196,0,.3);color:var(--gold)}
+.entry h3{font-size:14.5px;color:#fff;margin:.3rem 0 .3rem}
+.entry p{font-size:12.5px;color:var(--muted);line-height:1.75}
+footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
+  border-top:1px solid var(--border);margin-top:2rem}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="index.html">← マインクラフト.the.Mod トップへ戻る</a></div>
+<div class="wrap">
+  <h1>更新履歴</h1>
+
+  <div class="timeline" id="timeline"></div>
+
+  <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
+</div>
+<script src="transition.js"></script>
+<script>
+async function run(){
+  let data = [];
+  try{
+    const res = await fetch("changelog.json");
+    data = await res.json();
+  }catch{ data = []; }
+
+  const tl = document.getElementById("timeline");
+  if(!data.length){
+    tl.innerHTML = `<p style="color:var(--muted);font-size:13px">まだ更新履歴がありません。</p>`;
+    return;
+  }
+
+  // 日付が新しい順（文字列として降順ソート。"2026-07-03"のような形式を想定）
+  data.sort((a,b) => (b.date||"").localeCompare(a.date||""));
+
+  tl.innerHTML = data.map(item => `
+    <div class="entry">
+      <div class="date">${item.date||""}</div>
+      <span class="tag ${item.tag==='fix'?'fix':''}">${item.tag==='fix'?'FIX':'NEW'}</span>
+      <h3>${item.title||""}</h3>
+      <p>${item.desc||""}</p>
+    </div>
+  `).join("");
+}
+run();
+</script>
+</body>
+</html>

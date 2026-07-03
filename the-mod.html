@@ -99,13 +99,20 @@ footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;f
     <div class="dl-icon">💎</div>
     <div class="dl-info">
       <h2>the-mod-1.0.0.jar</h2>
-      <div class="ver">Minecraft 1.20.1 ・ Forge 47.2.0+ ・ MIT License</div>
+      <div class="ver">Minecraft 1.20.1 ・ Forge 47.2.0+ ・ MIT License ・ <span id="dl-count-display">⬇ …回ダウンロード</span></div>
       <div class="dl-btns">
-        <a href="the-mod-1.0.0.jar" download class="btn btn-cyan">⬇ Modをダウンロード</a>
+        <a href="the-mod-1.0.0.jar" download class="btn btn-cyan" onclick="if(window.dlHit)dlHit('the_mod')">⬇ Modをダウンロード</a>
         <a href="the-mod-README.pdf" download class="btn btn-ghost">📄 説明書PDFをダウンロード</a>
       </div>
     </div>
   </div>
+  <script>
+    if(window.dlGet){
+      dlGet('the_mod').then(n=>{
+        if(n!==null) document.getElementById('dl-count-display').textContent = '⬇ ' + n + '回ダウンロード';
+      });
+    }
+  </script>
 
   <div class="sec">
     <h3>// 追加される要素</h3>
@@ -165,8 +172,37 @@ footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;f
     </div>
   </div>
 
+  <div class="sec">
+    <h3>// コメント</h3>
+    <div class="rule"></div>
+    <!--
+      ▼▼▼ giscus セットアップ手順 ▼▼▼
+      1. GitHubリポジトリの Settings > General > Features で「Discussions」にチェックを入れる
+      2. https://github.com/apps/giscus にアクセスし、このリポジトリにインストールする
+      3. https://giscus.app を開き、リポジトリ名を入力して設定を進める
+      4. 生成された <script> タグの data-repo-id と data-category-id を、
+         下の script タグの同じ属性にコピーして書き換える
+    -->
+    <script src="https://giscus.app/client.js"
+      data-repo="tanikawayosiyukiwol-cmd/minecraft-the-mod"
+      data-repo-id="【giscus.appで取得したrepo-idに書き換えてください】"
+      data-category="Comments"
+      data-category-id="【giscus.appで取得したcategory-idに書き換えてください】"
+      data-mapping="pathname"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="bottom"
+      data-theme="dark_dimmed"
+      data-lang="ja"
+      crossorigin="anonymous"
+      async>
+    </script>
+  </div>
+
   <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
 </div>
 
+<script src="transition.js"></script>
 </body>
 </html>

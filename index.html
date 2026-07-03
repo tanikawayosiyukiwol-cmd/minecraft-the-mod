@@ -238,7 +238,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
     <li><a href="#mods" class="on">Mod</a></li>
     <li><a href="#worlds">ワールド</a></li>
     <li><a href="#packs">リソースパック</a></li>
-    <li><a href="#ranking">ランキング</a></li>
+    <li><a href="ranking.html">ランキング</a></li>
   </ul>
   <div class="top-search" style="margin-left:auto">
     <span style="color:var(--muted);font-size:13px">🔍</span>
@@ -263,7 +263,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   </div>
   <div class="hero-cta">
     <a href="#mods" class="btn btn-lg btn-cyan">⬇ コンテンツを見る</a>
-    <a href="#ranking" class="btn btn-lg btn-ghost">🏆 ランキング</a>
+    <a href="ranking.html" class="btn btn-lg btn-ghost">🏆 ランキング</a>
   </div>
 </section>
 
@@ -369,7 +369,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
         <li><a href="#mods">Mod 一覧</a></li>
         <li><a href="#worlds">ワールド</a></li>
         <li><a href="#packs">リソースパック</a></li>
-        <li><a href="#ranking">ランキング</a></li>
+        <li><a href="ranking.html">🏆 ランキング</a></li>
       </ul></div>
       <div class="footer-col"><h4>バージョン</h4><ul>
         <li><a href="index.html?ver=1.20#mods">Java 1.20.x</a></li>
@@ -378,6 +378,8 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
         <li><a href="index.html?ver=bedrock#mods">統合版 1.21.x</a></li>
       </ul></div>
       <div class="footer-col"><h4>サイト情報</h4><ul>
+        <li><a href="faq.html">よくある質問</a></li>
+        <li><a href="changelog.html">更新履歴</a></li>
         <li><a href="terms.html">利用規約</a></li>
         <li><a href="privacy.html">プライバシー</a></li>
         <li><a href="contact.html">お問い合わせ</a></li>
@@ -429,10 +431,21 @@ function cardHTML(item){
       <div class="card-tags">${(item.tags||[]).map(t=>`<span class="ctag">${t}</span>`).join("")}</div>
     </div>
     <div class="card-footer">
-      <span class="dl-count">⬇ ${item.dl>=1000?(item.dl/1e3).toFixed(1)+"k":item.dl||0}</span>
-      <a href="${item.url||"#"}" ${item.url&&item.url!="#"?"download":""} onclick="event.stopPropagation()" class="btn btn-sm ${DL_BTN[item.type]||"btn-cyan"}">⬇ DL</a>
+      <span class="dl-count" id="dlc-${item.id||''}">⬇ …</span>
+      <a href="${item.url||"#"}" ${item.url&&item.url!="#"?"download":""} onclick="event.stopPropagation();if(window.dlHit&&'${item.id||''}'){dlHit('${item.id||''}')}" class="btn btn-sm ${DL_BTN[item.type]||"btn-cyan"}">⬇ DL</a>
     </div>
   </div>`;
+}
+
+// カード描画後に、各アイテムの実際のダウンロード数を非同期で取得して差し込む
+async function fillDlCounts(items){
+  if(!window.dlGet) return;
+  for(const item of items){
+    if(!item.id) continue;
+    const n = await dlGet(item.id);
+    const el = document.getElementById("dlc-"+item.id);
+    if(el && n!==null) el.textContent = "⬇ " + (n>=1000?(n/1e3).toFixed(1)+"k":n);
+  }
 }
 
 function getFiltered(){
@@ -460,12 +473,14 @@ function renderAll(){
     document.getElementById("feat-desc").textContent=f.desc||"";
     document.getElementById("feat-tags").innerHTML=(f.tags||[]).map(t=>`<span class="ctag">${t}</span>`).join("");
     document.getElementById("feat-dl").href=f.url||"#";
+    document.getElementById("feat-dl").setAttribute("onclick", f.id?`dlHit('${f.id}')`:"");
   } else fw.style.display="none";
 
   // mods
   const mc=document.getElementById("cards-mod");
   mc.innerHTML=mods.slice(0,showN).map(cardHTML).join("")||
     '<div class="empty"><span class="empty-icon">📦</span>公開中のModはまだありません</div>';
+  fillDlCounts(mods.slice(0,showN));
   document.getElementById("load-more").style.display=mods.length>showN?"":"none";
 
   // worlds / packs
