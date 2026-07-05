@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/sitemap.xml
