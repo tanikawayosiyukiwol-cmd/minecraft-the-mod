@@ -5,12 +5,12 @@
 (function(){
   try{
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'site-config.json?t=' + Date.now(), false);
+    xhr.open('GET', '/minecraft-the-mod/site-config.json?t=' + Date.now(), false);
     xhr.send(null);
     if(xhr.status === 200){
       var cfg = JSON.parse(xhr.responseText);
-      if(cfg.maintenance === true && location.pathname.indexOf('maintenance.html') === -1){
-        location.replace('maintenance.html');
+      if(cfg.maintenance === true && location.pathname.indexOf('/maintenance/') === -1){
+        location.replace('/minecraft-the-mod/maintenance/');
       }
     }
   }catch(e){}
@@ -20,10 +20,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>マインクラフト.the.Mod | 総合 Mod・ワールド配布サイト</title>
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
-<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/minecraft-the-mod/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/minecraft-the-mod/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/minecraft-the-mod/favicon-180.png">
+<link rel="icon" type="image/x-icon" href="/minecraft-the-mod/favicon.ico">
 <meta name="description" content="Minecraft Java版・統合版対応のMod、ワールド、リソースパックを配布している非公式ファンサイトです。">
 <link rel="canonical" href="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/">
 <meta property="og:type" content="website">
@@ -279,16 +279,16 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 </div>
 
 <nav class="topbar">
-  <a href="#"><img src="logo.jpg" class="topbar-logo" alt="マインクラフト.the.Mod"></a>
+  <a href="#"><img src="/minecraft-the-mod/logo.jpg" class="topbar-logo" alt="マインクラフト.the.Mod"></a>
   <ul class="topbar-nav">
     <li><a href="#mods" class="on">Mod</a></li>
     <li><a href="#worlds">ワールド</a></li>
     <li><a href="#packs">リソースパック</a></li>
-    <li><a href="ranking.html">ランキング</a></li>
+    <li><a href="/minecraft-the-mod/ranking/">ランキング</a></li>
   </ul>
   <div class="top-search" style="margin-left:auto">
     <span style="color:var(--muted);font-size:13px">🔍</span>
-    <input type="text" placeholder="検索..." id="gsearch" onkeydown="if(event.key==='Enter'){location.href='search.html?q='+encodeURIComponent(this.value)}">
+    <input type="text" placeholder="検索..." id="gsearch" onkeydown="if(event.key==='Enter'){location.href='/minecraft-the-mod/search/?q='+encodeURIComponent(this.value)}">
   </div>
 </nav>
 
@@ -296,7 +296,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   <div class="hero-sky"></div>
   <div class="hero-stars" id="stars"></div>
   <div class="hero-logo-wrap">
-    <img src="logo.jpg" class="hero-logo" alt="マインクラフト.the.Mod">
+    <img src="/minecraft-the-mod/logo.jpg" class="hero-logo" alt="マインクラフト.the.Mod">
   </div>
   <p class="hero-sub">
     <em>Java版・統合版</em> 対応の Mod・ワールド・リソースパック 総合配布サイト
@@ -309,7 +309,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   </div>
   <div class="hero-cta">
     <a href="#mods" class="btn btn-lg btn-cyan">⬇ コンテンツを見る</a>
-    <a href="ranking.html" class="btn btn-lg btn-ghost">🏆 ランキング</a>
+    <a href="/minecraft-the-mod/ranking/" class="btn btn-lg btn-ghost">🏆 ランキング</a>
   </div>
 </section>
 
@@ -425,37 +425,37 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   <div class="wrap">
     <div class="footer-grid">
       <div>
-        <img src="logo.jpg" class="footer-logo" alt="マインクラフト.the.Mod">
+        <img src="/minecraft-the-mod/logo.jpg" class="footer-logo" alt="マインクラフト.the.Mod">
         <p class="footer-desc">Java版・統合版対応の Mod・ワールド・リソースパック 総合配布サイト。</p>
       </div>
       <div class="footer-col"><h4>コンテンツ</h4><ul>
         <li><a href="#mods">Mod 一覧</a></li>
         <li><a href="#worlds">ワールド</a></li>
         <li><a href="#packs">リソースパック</a></li>
-        <li><a href="ranking.html">🏆 ランキング</a></li>
+        <li><a href="/minecraft-the-mod/ranking/">🏆 ランキング</a></li>
       </ul></div>
       <div class="footer-col"><h4>バージョン</h4><ul>
-        <li><a href="index.html?ver=1.20#mods">Java 1.20.x</a></li>
-        <li><a href="index.html?ver=1.19#mods">Java 1.19.x</a></li>
-        <li><a href="index.html?ver=bedrock#mods">統合版 1.20.x</a></li>
-        <li><a href="index.html?ver=bedrock#mods">統合版 1.21.x</a></li>
+        <li><a href="/minecraft-the-mod/?ver=1.20#mods">Java 1.20.x</a></li>
+        <li><a href="/minecraft-the-mod/?ver=1.19#mods">Java 1.19.x</a></li>
+        <li><a href="/minecraft-the-mod/?ver=bedrock#mods">統合版 1.20.x</a></li>
+        <li><a href="/minecraft-the-mod/?ver=bedrock#mods">統合版 1.21.x</a></li>
       </ul></div>
       <div class="footer-col"><h4>サイト情報</h4><ul>
-        <li><a href="faq.html">よくある質問</a></li>
-        <li><a href="changelog.html">更新履歴</a></li>
-        <li><a href="terms.html">利用規約</a></li>
-        <li><a href="privacy.html">プライバシー</a></li>
-        <li><a href="contact.html">お問い合わせ</a></li>
+        <li><a href="/minecraft-the-mod/faq/">よくある質問</a></li>
+        <li><a href="/minecraft-the-mod/changelog/">更新履歴</a></li>
+        <li><a href="/minecraft-the-mod/terms/">利用規約</a></li>
+        <li><a href="/minecraft-the-mod/privacy/">プライバシー</a></li>
+        <li><a href="/minecraft-the-mod/contact/">お問い合わせ</a></li>
       </ul></div>
     </div>
     <div class="footer-bottom">
       <span class="footer-copy">© 2024 マインクラフト.the.Mod — Not affiliated with Mojang Studios.</span>
-      <div class="footer-badges"><span>Minecraft</span><span>Forge</span><span>Bedrock</span><span>Claude AI</span><span>aipal</span></div>
+      <div class="footer-badges"><span>Minecraft</span><span>Forge</span><span>Bedrock</span><span>Claude AI</span></div>
     </div>
   </div>
 </footer>
 
-<script src="transition.js"></script>
+<script src="/minecraft-the-mod/transition.js"></script>
 <script>
 const TC={mod:"--cyan",world:"--gold",pack:"--purple",bedrock:"--orange",tool:"--red"};
 const TN={mod:"MOD",world:"WORLD",pack:"RESOURCE",bedrock:"BEDROCK",tool:"TOOL"};
@@ -466,7 +466,7 @@ const DL_BTN={mod:"btn-cyan",world:"btn-gold",pack:"btn-purple",bedrock:"btn-cya
 let staticData=[];
 async function loadStaticData(){
   try{
-    const res=await fetch("data.json");
+    const res=await fetch("/minecraft-the-mod/data.json");
     staticData=await res.json();
   }catch{ staticData=[]; }
 }
@@ -660,7 +660,7 @@ async function updateStatsBar(){
   }
 
   // サイト開始日（適宜変更可）
-  const launchDate = new Date("2026-04-06");
+  const launchDate = new Date("2026-05-01");
   const days = Math.max(1, Math.floor((Date.now()-launchDate.getTime())/86400000));
 
   const elMods=document.getElementById("stat-mods");

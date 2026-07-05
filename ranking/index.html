@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+(function(){
+  try{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/minecraft-the-mod/site-config.json?t=' + Date.now(), false);
+    xhr.send(null);
+    if(xhr.status === 200){
+      var cfg = JSON.parse(xhr.responseText);
+      if(cfg.maintenance === true && location.pathname.indexOf('/maintenance/') === -1){
+        location.replace('/minecraft-the-mod/maintenance/');
+      }
+    }
+  }catch(e){}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>人気ランキング | マインクラフト.the.Mod</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/minecraft-the-mod/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/minecraft-the-mod/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/minecraft-the-mod/favicon-180.png">
+<link rel="icon" type="image/x-icon" href="/minecraft-the-mod/favicon.ico">
+<meta name="description" content="ダウンロード数が多い人気のMod・コンテンツのランキングです。">
+<link rel="canonical" href="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ranking.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="人気ランキング | マインクラフト.the.Mod">
+<meta property="og:description" content="ダウンロード数が多い人気のMod・コンテンツのランキングです。">
+<meta property="og:url" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ranking.html">
+<meta property="og:image" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ogp-image.jpg">
+<meta property="og:site_name" content="マインクラフト.the.Mod">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="人気ランキング | マインクラフト.the.Mod">
+<meta name="twitter:description" content="ダウンロード数が多い人気のMod・コンテンツのランキングです。">
+<meta name="twitter:image" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ogp-image.jpg">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7faf8;--surface:#ffffff;--surface2:#eef6f0;
+  --border:rgba(46,230,107,.22);--border2:rgba(46,230,107,.4);
+  --cyan:#2ee66b;--gold:#ff5252;--text:#16241b;--muted:#5f7466;--muted2:#93a89b;
+  --pixel:"Press Start 2P";--sans:"Noto Sans JP",sans-serif;--mono:"JetBrains Mono",monospace;--r:6px;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+.wrap{max-width:760px;margin:0 auto;padding:0 1.5rem}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border2);height:56px;display:flex;align-items:center;padding:0 1.5rem}
+.topbar a{color:var(--muted);text-decoration:none;font-size:13px}
+.topbar a:hover{color:var(--cyan)}
+h1{font-family:var(--pixel);font-size:clamp(13px,3vw,18px);line-height:1.9;color:var(--text);padding:2.5rem 0 .4rem}
+.sub{color:var(--muted);font-size:12.5px;margin-bottom:1.8rem}
+
+.row{display:grid;grid-template-columns:44px 60px 1fr auto;align-items:center;gap:1rem;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);
+  padding:.9rem 1.1rem;margin-bottom:.7rem;cursor:pointer;transition:border-color .15s}
+.row:hover{border-color:var(--border2)}
+.rank{font-family:var(--pixel);font-size:15px;color:var(--muted)}
+.rank.gold{color:var(--gold)}
+.rank.silver{color:#c8d4e0}
+.rank.bronze{color:#d98a4a}
+.thumb{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#eafaf0,#d7f5e2);
+  display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+.info h3{font-size:13.5px;color:var(--text);margin-bottom:.15rem}
+.info .ver{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.count{font-family:var(--mono);font-size:13px;color:var(--cyan);text-align:right;white-space:nowrap}
+.count small{display:block;font-size:9.5px;color:var(--muted);font-weight:400}
+
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
+  border-top:1px solid var(--border);margin-top:2rem}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="/minecraft-the-mod/">← マインクラフト.the.Mod トップへ戻る</a></div>
+<div class="wrap">
+  <h1>🏆 人気ランキング</h1>
+  <p class="sub">ダウンロード数が多い順に表示しています（全員共通の集計です）</p>
+
+  <div id="ranking-list"></div>
+
+  <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
+</div>
+
+<script src="/minecraft-the-mod/transition.js"></script>
+<script>
+async function run(){
+  let staticData = [];
+  try{
+    const res = await fetch("/minecraft-the-mod/data.json");
+    staticData = await res.json();
+  }catch{ staticData = []; }
+
+  let ls = [];
+  try{ ls = JSON.parse(localStorage.getItem("mc_data")||"[]"); }catch{}
+
+  const all = [...staticData, ...ls].filter(x=>x.published);
+  const list = document.getElementById("ranking-list");
+
+  if(!all.length){
+    list.innerHTML = `<div class="empty">まだ集計できるコンテンツがありません</div>`;
+    return;
+  }
+
+  // 各アイテムの実際のダウンロード数を取得してから順位を決める
+  const withCounts = await Promise.all(all.map(async item=>{
+    let n = 0;
+    if(item.id && window.dlGet){
+      const got = await dlGet(item.id);
+      n = got===null ? (item.dl||0) : got;
+    }else{
+      n = item.dl||0;
+    }
+    return {...item, liveDl:n};
+  }));
+
+  withCounts.sort((a,b)=>b.liveDl-a.liveDl);
+
+  const medalClass = i => i===0?"gold":i===1?"silver":i===2?"bronze":"";
+  const medalIcon = i => i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1);
+
+  list.innerHTML = withCounts.map((item,i)=>{
+    const link = item.detailUrl || item.url || "#";
+    return `<div class="row" onclick="pageGoTo('${link}')">
+      <div class="rank ${medalClass(i)}">${medalIcon(i)}</div>
+      <div class="thumb">${item.thumb||"📦"}</div>
+      <div class="info">
+        <h3>${item.title}</h3>
+        <div class="ver">${item.ver||""}</div>
+      </div>
+      <div class="count">${item.liveDl.toLocaleString()}<small>ダウンロード</small></div>
+    </div>`;
+  }).join("");
+}
+run();
+</script>
+</body>
+</html>

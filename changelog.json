@@ -2,6 +2,12 @@
   {
     "date": "2026-07-05",
     "tag": "new",
+    "title": "URLから.htmlを削除（クリーンURL化）",
+    "desc": "例: /the-mod.html → /the-mod/ のように、URLがすっきりした形式に変わりました。以前のURLも自動で新しいURLに転送されます。"
+  },
+  {
+    "date": "2026-07-05",
+    "tag": "new",
     "title": "SEO対策を実施",
     "desc": "favicon・SNSシェア用画像（OGP）・サイトマップを追加しました。検索結果やSNSでの見た目が改善されます。"
   },
