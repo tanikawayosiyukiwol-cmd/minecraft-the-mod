@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+(function(){
+  try{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/minecraft-the-mod/site-config.json?t=' + Date.now(), false);
+    xhr.send(null);
+    if(xhr.status === 200){
+      var cfg = JSON.parse(xhr.responseText);
+      if(cfg.maintenance === true && location.pathname.indexOf('/maintenance/') === -1){
+        location.replace('/minecraft-the-mod/maintenance/');
+      }
+    }
+  }catch(e){}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>サーバー状態確認 | マインクラフト.the.Mod</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/minecraft-the-mod/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/minecraft-the-mod/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/minecraft-the-mod/favicon-180.png">
+<link rel="icon" type="image/x-icon" href="/minecraft-the-mod/favicon.ico">
+<meta name="description" content="MinecraftサーバーのIPアドレスを入力すると、オンライン状況・現在の人数・バージョンを確認できます。">
+<link rel="canonical" href="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/server-status/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="サーバー状態確認 | マインクラフト.the.Mod">
+<meta property="og:description" content="MinecraftサーバーのIPアドレスを入力すると、オンライン状況・現在の人数・バージョンを確認できます。">
+<meta property="og:url" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/server-status/">
+<meta property="og:image" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ogp-image.jpg">
+<meta property="og:site_name" content="マインクラフト.the.Mod">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7faf8;--surface:#ffffff;--surface2:#eef6f0;
+  --border:rgba(46,230,107,.22);--border2:rgba(46,230,107,.4);
+  --cyan:#2ee66b;--gold:#ff5252;--green:#1ddb6e;--red:#f43f5e;
+  --text:#16241b;--muted:#5f7466;--muted2:#93a89b;
+  --pixel:"Press Start 2P";--sans:"Noto Sans JP",sans-serif;--mono:"JetBrains Mono",monospace;--r:6px;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+.wrap{max-width:640px;margin:0 auto;padding:0 1.5rem}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border2);height:56px;display:flex;align-items:center;padding:0 1.5rem}
+.topbar a{color:var(--muted);text-decoration:none;font-size:13px}
+.topbar a:hover{color:var(--cyan)}
+h1{font-family:var(--pixel);font-size:clamp(13px,3vw,18px);line-height:1.9;color:var(--text);padding:2.5rem 0 .5rem;text-align:center}
+.sub{color:var(--muted);font-size:13px;margin-bottom:2rem;line-height:1.8;text-align:center}
+
+.search-box{display:flex;gap:.6rem;margin-bottom:1.6rem}
+.search-box input{flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);
+  color:var(--text);font-family:var(--mono);font-size:14px;padding:.75rem 1rem}
+.search-box input:focus{outline:none;border-color:var(--cyan)}
+.btn{display:inline-flex;align-items:center;gap:.4rem;border:none;cursor:pointer;font-weight:700;
+  border-radius:var(--r);padding:.75rem 1.4rem;font-size:13.5px;white-space:nowrap;
+  background:linear-gradient(135deg,var(--cyan),#17c765);color:#04170c}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:default}
+
+.status-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:1.6rem;display:none}
+.status-card.show{display:block}
+.status-head{display:flex;align-items:center;gap:.8rem;margin-bottom:1rem}
+.status-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.status-dot.on{background:var(--cyan);box-shadow:0 0 8px rgba(46,230,107,.6)}
+.status-dot.off{background:var(--red)}
+.status-title{font-size:15px;font-weight:700}
+.status-title.on{color:var(--cyan)}
+.status-title.off{color:var(--red)}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;font-size:13px}
+.status-grid .item{background:var(--surface2);border-radius:var(--r);padding:.7rem .9rem}
+.status-grid .label{color:var(--muted);font-size:10.5px;margin-bottom:.2rem}
+.status-grid .value{font-family:var(--mono);font-weight:700}
+.motd{margin-top:1rem;padding:.8rem 1rem;background:var(--surface2);border-radius:var(--r);
+  font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;color:var(--text)}
+
+.note{margin-top:1.5rem;font-size:11.5px;color:var(--muted2);line-height:1.8;text-align:center}
+footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
+  border-top:1px solid var(--border);margin-top:1rem}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="/minecraft-the-mod/">← マインクラフト.the.Mod トップへ戻る</a></div>
+<div class="wrap">
+  <h1>🖧 サーバー状態確認</h1>
+  <p class="sub">Minecraftサーバーのアドレスを入力すると、現在の状況を確認できます。</p>
+
+  <div class="search-box">
+    <input type="text" id="server-addr" placeholder="例: hypixel.net" onkeydown="if(event.key==='Enter')checkServer()">
+    <button class="btn" id="check-btn" onclick="checkServer()">確認する</button>
+  </div>
+
+  <div class="status-card" id="status-card"></div>
+
+  <p class="note">
+    サーバー情報の取得には、無料の外部サービス「mcsrvstat.us」を利用しています。<br>
+    統合版（Bedrock）サーバーには対応していません。
+  </p>
+
+  <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
+</div>
+
+<script src="/minecraft-the-mod/transition.js"></script>
+<script>
+async function checkServer(){
+  const addr = document.getElementById('server-addr').value.trim();
+  const card = document.getElementById('status-card');
+  const btn = document.getElementById('check-btn');
+  if(!addr) return;
+
+  btn.disabled = true;
+  btn.textContent = '確認中...';
+  card.classList.add('show');
+  card.innerHTML = '<div style="text-align:center;color:var(--muted);padding:1rem 0">確認しています...</div>';
+
+  try{
+    const res = await fetch(`https://api.mcsrvstat.us/3/${encodeURIComponent(addr)}`);
+    const data = await res.json();
+
+    if(!data.online){
+      card.innerHTML = `
+        <div class="status-head">
+          <span class="status-dot off"></span>
+          <span class="status-title off">オフライン</span>
+        </div>
+        <div class="status-grid">
+          <div class="item"><div class="label">アドレス</div><div class="value">${addr}</div></div>
+        </div>`;
+    }else{
+      const players = data.players ? `${data.players.online ?? '?'} / ${data.players.max ?? '?'}` : '不明';
+      const version = data.version || '不明';
+      const motdHtml = data.motd && data.motd.clean ? data.motd.clean.join('\n') : '';
+      card.innerHTML = `
+        <div class="status-head">
+          <span class="status-dot on"></span>
+          <span class="status-title on">オンライン</span>
+        </div>
+        <div class="status-grid">
+          <div class="item"><div class="label">アドレス</div><div class="value">${data.hostname || addr}</div></div>
+          <div class="item"><div class="label">現在の人数</div><div class="value">${players}</div></div>
+          <div class="item"><div class="label">バージョン</div><div class="value">${version}</div></div>
+          <div class="item"><div class="label">ソフトウェア</div><div class="value">${data.software || '不明'}</div></div>
+        </div>
+        ${motdHtml ? `<div class="motd">${motdHtml}</div>` : ''}
+      `;
+    }
+  }catch(e){
+    card.innerHTML = `<div style="text-align:center;color:var(--red);padding:1rem 0">取得に失敗しました。アドレスを確認して、もう一度お試しください。</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '確認する';
+}
+</script>
+</body>
+</html>

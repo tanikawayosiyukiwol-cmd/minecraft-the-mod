@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+(function(){
+  try{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/minecraft-the-mod/site-config.json?t=' + Date.now(), false);
+    xhr.send(null);
+    if(xhr.status === 200){
+      var cfg = JSON.parse(xhr.responseText);
+      if(cfg.maintenance === true && location.pathname.indexOf('/maintenance/') === -1){
+        location.replace('/minecraft-the-mod/maintenance/');
+      }
+    }
+  }catch(e){}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>便利ツール集 | マインクラフト.the.Mod</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/minecraft-the-mod/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/minecraft-the-mod/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/minecraft-the-mod/favicon-180.png">
+<link rel="icon" type="image/x-icon" href="/minecraft-the-mod/favicon.ico">
+<meta name="description" content="ネザー座標変換・必要ブロック数計算・経験値レベル計算など、Minecraftで役立つ計算ツール集です。">
+<link rel="canonical" href="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/tools/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="便利ツール集 | マインクラフト.the.Mod">
+<meta property="og:description" content="ネザー座標変換・必要ブロック数計算・経験値レベル計算など、Minecraftで役立つ計算ツール集です。">
+<meta property="og:url" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/tools/">
+<meta property="og:image" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ogp-image.jpg">
+<meta property="og:site_name" content="マインクラフト.the.Mod">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7faf8;--surface:#ffffff;--surface2:#eef6f0;
+  --border:rgba(46,230,107,.22);--border2:rgba(46,230,107,.4);
+  --cyan:#2ee66b;--gold:#ff5252;--text:#16241b;--muted:#5f7466;--muted2:#93a89b;
+  --pixel:"Press Start 2P";--sans:"Noto Sans JP",sans-serif;--mono:"JetBrains Mono",monospace;--r:6px;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 1.5rem}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border2);height:56px;display:flex;align-items:center;padding:0 1.5rem}
+.topbar a{color:var(--muted);text-decoration:none;font-size:13px}
+.topbar a:hover{color:var(--cyan)}
+h1{font-family:var(--pixel);font-size:clamp(13px,3vw,18px);line-height:1.9;color:var(--text);padding:2.5rem 0 .5rem}
+.sub{color:var(--muted);font-size:13.5px;margin-bottom:2.2rem;line-height:1.8}
+
+.tool-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);
+  padding:1.6rem;margin-bottom:1.6rem}
+.tool-card h2{font-size:15px;color:var(--text);margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem}
+.tool-card .desc{font-size:12.5px;color:var(--muted);margin-bottom:1.1rem;line-height:1.7}
+
+.row{display:flex;flex-wrap:wrap;gap:.8rem;align-items:flex-end;margin-bottom:.9rem}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field label{font-size:11px;color:var(--muted);font-weight:700}
+.field input,.field select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r);
+  color:var(--text);font-family:var(--mono);font-size:14px;padding:.55rem .7rem;width:120px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--cyan)}
+
+.btn{display:inline-flex;align-items:center;gap:.4rem;border:none;cursor:pointer;font-weight:700;
+  border-radius:var(--r);padding:.6rem 1.3rem;font-size:13px;
+  background:linear-gradient(135deg,var(--cyan),#17c765);color:#04170c}
+.btn:hover{filter:brightness(1.08)}
+
+.result{margin-top:.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  padding:.9rem 1.1rem;font-family:var(--mono);font-size:13.5px;color:var(--text);min-height:1.4em}
+.result strong{color:var(--cyan)}
+.result .warn{color:var(--gold)}
+
+footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
+  border-top:1px solid var(--border);margin-top:1rem}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="/minecraft-the-mod/">← マインクラフト.the.Mod トップへ戻る</a></div>
+<div class="wrap">
+  <h1>🧰 便利ツール集</h1>
+  <p class="sub">Minecraftのプレイに役立つ計算ツールです。ブラウザ内だけで計算するので、データはどこにも送信されません。</p>
+
+  <!-- ネザー座標計算機 -->
+  <div class="tool-card">
+    <h2>🌋 ネザー座標計算機</h2>
+    <div class="desc">地上とネザーの座標は「8倍・8分の1」の関係になっています。ネザー経由の長距離移動ルート作りに便利です。</div>
+    <div class="row">
+      <div class="field"><label>地上 X</label><input type="number" id="ow-x" value="0"></div>
+      <div class="field"><label>地上 Z</label><input type="number" id="ow-z" value="0"></div>
+      <button class="btn" onclick="calcNether()">→ ネザー座標を計算</button>
+    </div>
+    <div class="row">
+      <div class="field"><label>ネザー X</label><input type="number" id="nt-x" value="0"></div>
+      <div class="field"><label>ネザー Z</label><input type="number" id="nt-z" value="0"></div>
+      <button class="btn" onclick="calcOverworld()">→ 地上座標を計算</button>
+    </div>
+    <div class="result" id="nether-result">ここに結果が表示されます</div>
+  </div>
+
+  <!-- 必要ブロック数計算機 -->
+  <div class="tool-card">
+    <h2>🧱 必要ブロック数計算機</h2>
+    <div class="desc">壁や床のサイズから、必要なブロック数とスタック数（64個/スタック）を計算します。</div>
+    <div class="row">
+      <div class="field"><label>横幅（ブロック）</label><input type="number" id="blk-w" value="10" min="0"></div>
+      <div class="field"><label>高さ／奥行（ブロック）</label><input type="number" id="blk-h" value="5" min="0"></div>
+      <div class="field">
+        <label>形状</label>
+        <select id="blk-shape">
+          <option value="area">面（壁・床）＝ 横×高さ</option>
+          <option value="volume">立体（直方体）＝ 横×高さ×奥行</option>
+        </select>
+      </div>
+      <div class="field" id="blk-depth-wrap" style="display:none">
+        <label>奥行（ブロック）</label><input type="number" id="blk-d" value="5" min="0">
+      </div>
+      <button class="btn" onclick="calcBlocks()">→ 計算する</button>
+    </div>
+    <div class="result" id="block-result">ここに結果が表示されます</div>
+  </div>
+
+  <!-- 経験値レベル計算機 -->
+  <div class="tool-card">
+    <h2>⭐ 経験値（XP）レベル計算機</h2>
+    <div class="desc">目標のレベルに必要な合計経験値ポイントを計算します（Java版の公式計算式に基づきます）。</div>
+    <div class="row">
+      <div class="field"><label>目標レベル</label><input type="number" id="xp-level" value="30" min="0" max="500"></div>
+      <button class="btn" onclick="calcXP()">→ 必要経験値を計算</button>
+    </div>
+    <div class="result" id="xp-result">ここに結果が表示されます</div>
+  </div>
+
+  <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
+</div>
+
+<script src="/minecraft-the-mod/transition.js"></script>
+<script>
+// ネザー座標
+function calcNether(){
+  const x = parseFloat(document.getElementById('ow-x').value) || 0;
+  const z = parseFloat(document.getElementById('ow-z').value) || 0;
+  const nx = Math.round(x/8), nz = Math.round(z/8);
+  document.getElementById('nether-result').innerHTML =
+    `地上 (${x}, ${z}) → ネザー <strong>(${nx}, ${nz})</strong>`;
+}
+function calcOverworld(){
+  const x = parseFloat(document.getElementById('nt-x').value) || 0;
+  const z = parseFloat(document.getElementById('nt-z').value) || 0;
+  const ox = x*8, oz = z*8;
+  document.getElementById('nether-result').innerHTML =
+    `ネザー (${x}, ${z}) → 地上 <strong>(${ox}, ${oz})</strong>`;
+}
+
+// ブロック計算
+document.getElementById('blk-shape').addEventListener('change', function(){
+  document.getElementById('blk-depth-wrap').style.display = this.value === 'volume' ? 'flex' : 'none';
+});
+function calcBlocks(){
+  const w = parseFloat(document.getElementById('blk-w').value) || 0;
+  const h = parseFloat(document.getElementById('blk-h').value) || 0;
+  const shape = document.getElementById('blk-shape').value;
+  let total;
+  if(shape === 'volume'){
+    const d = parseFloat(document.getElementById('blk-d').value) || 0;
+    total = Math.round(w*h*d);
+  }else{
+    total = Math.round(w*h);
+  }
+  const stacks = Math.floor(total/64);
+  const rest = total%64;
+  document.getElementById('block-result').innerHTML =
+    `合計 <strong>${total.toLocaleString()}</strong> 個 　＝　 ${stacks}スタック + ${rest}個`;
+}
+
+// XP計算（Java版公式）
+function xpForLevel(level){
+  if(level <= 16) return level*level + 6*level;
+  if(level <= 31) return Math.round(2.5*level*level - 40.5*level + 360);
+  return Math.round(4.5*level*level - 162.5*level + 2220);
+}
+function calcXP(){
+  const level = Math.max(0, Math.round(parseFloat(document.getElementById('xp-level').value) || 0));
+  const total = xpForLevel(level);
+  document.getElementById('xp-result').innerHTML =
+    `レベル <strong>${level}</strong> に必要な合計経験値：<strong>${total.toLocaleString()}</strong> ポイント`;
+}
+
+// 初期表示
+calcNether(); calcBlocks(); calcXP();
+</script>
+</body>
+</html>
