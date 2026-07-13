@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+(function(){
+  try{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/minecraft-the-mod/site-config.json?t=' + Date.now(), false);
+    xhr.send(null);
+    if(xhr.status === 200){
+      var cfg = JSON.parse(xhr.responseText);
+      if(cfg.maintenance === true && location.pathname.indexOf('/maintenance/') === -1){
+        location.replace('/minecraft-the-mod/maintenance/');
+      }
+    }
+  }catch(e){}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>レッドストーン回路集 | マインクラフト.the.Mod</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/minecraft-the-mod/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/minecraft-the-mod/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/minecraft-the-mod/favicon-180.png">
+<link rel="icon" type="image/x-icon" href="/minecraft-the-mod/favicon.ico">
+<meta name="description" content="自動ドア・クロック回路・全自動収穫機など、基本的なレッドストーン回路の作り方をまとめました。">
+<link rel="canonical" href="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/redstone/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="レッドストーン回路集 | マインクラフト.the.Mod">
+<meta property="og:description" content="自動ドア・クロック回路・全自動収穫機など、基本的なレッドストーン回路の作り方をまとめました。">
+<meta property="og:url" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/redstone/">
+<meta property="og:image" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ogp-image.jpg">
+<meta property="og:site_name" content="マインクラフト.the.Mod">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7faf8;--surface:#ffffff;--surface2:#eef6f0;
+  --border:rgba(46,230,107,.22);--border2:rgba(46,230,107,.4);
+  --cyan:#2ee66b;--gold:#ff5252;--text:#16241b;--muted:#5f7466;--muted2:#93a89b;
+  --pixel:"Press Start 2P";--sans:"Noto Sans JP",sans-serif;--mono:"JetBrains Mono",monospace;--r:6px;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+.wrap{max-width:780px;margin:0 auto;padding:0 1.5rem}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border2);height:56px;display:flex;align-items:center;padding:0 1.5rem}
+.topbar a{color:var(--muted);text-decoration:none;font-size:13px}
+.topbar a:hover{color:var(--cyan)}
+h1{font-family:var(--pixel);font-size:clamp(13px,3vw,18px);line-height:1.9;color:var(--text);padding:2.5rem 0 .5rem}
+.sub{color:var(--muted);font-size:13px;margin-bottom:2rem;line-height:1.8}
+h2{font-size:15px;color:var(--cyan);margin:1.8rem 0 .7rem;font-weight:700}
+h3{font-size:13.5px;color:var(--text);margin:1.2rem 0 .4rem;font-weight:700}
+p,li{font-size:13px;line-height:1.9;color:#3a4a40}
+ul,ol{padding-left:1.4rem;margin-bottom:.8rem}
+code{font-family:var(--mono);background:rgba(46,230,107,.08);padding:.1rem .4rem;border-radius:4px;color:#0d8a3e;font-size:12px}
+.box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:1.3rem 1.5rem;margin-bottom:1.2rem}
+.note{background:rgba(255,82,82,.06);border:1px solid rgba(255,82,82,.25);border-radius:var(--r2);
+  padding:1rem 1.2rem;font-size:12px;color:#7a2a2a;line-height:1.8;margin-top:1.2rem}
+.note strong{color:var(--gold)}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border2);
+  border-radius:var(--r2);overflow:hidden;font-size:12.5px;margin-bottom:1.2rem}
+th,td{padding:.6rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--surface2);color:var(--muted);font-size:11px;font-family:var(--mono)}
+tr:last-child td{border-bottom:none}
+footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
+  border-top:1px solid var(--border);margin-top:2rem}
+
+</style>
+</head>
+<body>
+<div class="topbar"><a href="/minecraft-the-mod/">← マインクラフト.the.Mod トップへ戻る</a></div>
+<div class="wrap">
+
+  <h1>🔴 レッドストーン回路集</h1>
+  <p class="sub">よく使われる基本的なレッドストーン回路を、材料と作り方でまとめました。</p>
+
+  <div class="box">
+    <h3>🚪 自動ドア（感圧板式）</h3>
+    <p><strong>材料：</strong> 鉄のドア ×2、感圧板 ×2</p>
+    <p>ドアの両側の地面に感圧板を1枚ずつ設置するだけで完成です。プレイヤーが感圧板を踏むとドアが開き、離れると自動で閉まります。最も簡単な自動ドアです。</p>
+  </div>
+
+  <div class="box">
+    <h3>💡 クロック回路（点滅回路）</h3>
+    <p><strong>材料：</strong> レッドストーンリピーター ×2、レッドストーンダスト、レッドストーントーチ ×1</p>
+    <p>リピーター2つを向かい合わせにループ状につなぎ、片方にトーチで最初の信号を送ると、一定間隔で信号がON/OFFを繰り返す「クロック回路」になります。リピーターの遅延（1〜4）を変えることで点滅の速さを調整できます。ランプの点滅や自動収穫機の駆動に使われます。</p>
+  </div>
+
+  <div class="box">
+    <h3>🌾 全自動収穫機（観察者式）</h3>
+    <p><strong>材料：</strong> 観察者（オブザーバー）、ピストン、水流、ホッパー</p>
+    <p>作物の上に観察者を設置して成長を検知し、信号でピストンを起動して水流に流し込み、下に置いたホッパーで自動回収する仕組みです。放置するだけで作物が自動で収穫されます。</p>
+  </div>
+
+  <div class="box">
+    <h3>🔺 ANDゲート（論理回路）</h3>
+    <p><strong>材料：</strong> レッドストーントーチ ×2、レッドストーンダスト、粘着質でないブロック</p>
+    <p>2つの入力が両方ONのときだけ出力がONになる回路です。2つのレバーからの信号を1つのブロックに集めてトーチで反転させると作れます（NORゲートを2回組み合わせる方法が代表的）。金庫の二重ロックなどに応用できます。</p>
+  </div>
+
+  <div class="box">
+    <h3>🛗 簡易エレベーター（ピストン式）</h3>
+    <p><strong>材料：</strong> 粘着ピストン、スライムブロック、レッドストーンブロック</p>
+    <p>粘着ピストンとスライムブロックを交互に積み重ね、下からレッドストーン信号を送ると連鎖的にブロックが持ち上がり、上に乗ったプレイヤーごと運ぶ「ピストンエレベーター」が作れます。</p>
+  </div>
+
+  <h2>もっと詳しく知りたい方へ</h2>
+  <p>より高度な回路（自動仕分け機、順番回路など）は、Minecraft Wikiの「レッドストーン回路」の項目にも詳しい解説があります。実際にクリエイティブモードで試しながら組んでみるのがおすすめです。</p>
+
+  <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
+</div>
+<script src="/minecraft-the-mod/transition.js"></script>
+</body>
+</html>
