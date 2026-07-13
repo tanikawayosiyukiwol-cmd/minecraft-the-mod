@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+(function(){
+  try{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/minecraft-the-mod/site-config.json?t=' + Date.now(), false);
+    xhr.send(null);
+    if(xhr.status === 200){
+      var cfg = JSON.parse(xhr.responseText);
+      if(cfg.maintenance === true && location.pathname.indexOf('/maintenance/') === -1){
+        location.replace('/minecraft-the-mod/maintenance/');
+      }
+    }
+  }catch(e){}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>運営ブログ | マインクラフト.the.Mod</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/minecraft-the-mod/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/minecraft-the-mod/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/minecraft-the-mod/favicon-180.png">
+<link rel="icon" type="image/x-icon" href="/minecraft-the-mod/favicon.ico">
+<meta name="description" content="マインクラフト.the.Mod 運営者による更新記事・お知らせブログです。">
+<link rel="canonical" href="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/articles/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="運営ブログ | マインクラフト.the.Mod">
+<meta property="og:description" content="マインクラフト.the.Mod 運営者による更新記事・お知らせブログです。">
+<meta property="og:url" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/articles/">
+<meta property="og:image" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ogp-image.jpg">
+<meta property="og:site_name" content="マインクラフト.the.Mod">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7faf8;--surface:#ffffff;--surface2:#eef6f0;
+  --border:rgba(46,230,107,.22);--border2:rgba(46,230,107,.4);
+  --cyan:#2ee66b;--gold:#ff5252;--text:#16241b;--muted:#5f7466;--muted2:#93a89b;
+  --pixel:"Press Start 2P";--sans:"Noto Sans JP",sans-serif;--mono:"JetBrains Mono",monospace;--r:6px;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+.wrap{max-width:760px;margin:0 auto;padding:0 1.5rem}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border2);height:56px;display:flex;align-items:center;padding:0 1.5rem}
+.topbar a{color:var(--muted);text-decoration:none;font-size:13px}
+.topbar a:hover{color:var(--cyan)}
+h1{font-family:var(--pixel);font-size:clamp(13px,3vw,18px);line-height:1.9;color:var(--text);padding:2.5rem 0 .5rem}
+.sub{color:var(--muted);font-size:13px;margin-bottom:2rem;line-height:1.8}
+
+.post-card{display:block;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);
+  padding:1.4rem 1.6rem;margin-bottom:1rem;text-decoration:none;color:inherit;cursor:pointer;transition:border-color .15s}
+.post-card:hover{border-color:var(--cyan)}
+.post-date{font-family:var(--mono);font-size:11px;color:var(--muted2);margin-bottom:.4rem}
+.post-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:.5rem}
+.post-excerpt{font-size:12.5px;color:var(--muted);line-height:1.7}
+
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
+  border-top:1px solid var(--border);margin-top:1.5rem}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="/minecraft-the-mod/">← マインクラフト.the.Mod トップへ戻る</a></div>
+<div class="wrap">
+  <h1>📝 運営ブログ</h1>
+  <p class="sub">サイト運営者による、更新情報やお知らせ記事です。</p>
+
+  <div id="post-list"></div>
+
+  <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
+</div>
+
+<script src="/minecraft-the-mod/transition.js"></script>
+<script>
+async function run(){
+  let articles = [];
+  try{
+    const res = await fetch("/minecraft-the-mod/articles.json");
+    articles = await res.json();
+  }catch{ articles = []; }
+
+  const pub = articles.filter(a => a.published).sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  const list = document.getElementById("post-list");
+
+  if(!pub.length){
+    list.innerHTML = `<div class="empty">まだ記事がありません。</div>`;
+    return;
+  }
+
+  list.innerHTML = pub.map(a => `
+    <a class="post-card" onclick="event.preventDefault();pageGoTo('/minecraft-the-mod/${a.id}/')" href="/minecraft-the-mod/${a.id}/">
+      <div class="post-date">${a.date}</div>
+      <div class="post-title">${a.title}</div>
+      <div class="post-excerpt">${a.excerpt || ""}</div>
+    </a>
+  `).join("");
+}
+run();
+</script>
+</body>
+</html>
