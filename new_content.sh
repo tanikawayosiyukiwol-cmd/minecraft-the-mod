@@ -1,22 +1,51 @@
 #!/bin/bash
 # ==========================================================
-# new_article.sh
-# 運営ブログの新しい記事を、番号URL付きで自動生成するスクリプト
-# 使い方: ./new_article.sh   を minecraft-the-mod フォルダの中で実行
+# new_content.sh
+# 番号URLのコンテンツ（記事・ギャラリー・レビュー）を作成するスクリプト
+# 使い方: ./new_content.sh   を minecraft-the-mod フォルダの中で実行
 # ==========================================================
 set -e
 
 SITE_DIR="$HOME/minecraft-the-mod"
 cd "$SITE_DIR" || { echo "❌ $SITE_DIR が見つかりません"; exit 1; }
 
-echo "📝 新しい記事を作成します"
+echo "📦 新しいコンテンツを作成します"
 echo "----------------------------------------"
-read -p "記事タイトル: " TITLE
+echo "1) 記事（運営ブログ）"
+echo "2) ギャラリー（建築作品・スクリーンショット）"
+echo "3) レビュー・感想"
+read -p "番号を選んでください [1-3]: " TYPE_NUM
+
+case "$TYPE_NUM" in
+  1) TYPE="article" ;;
+  2) TYPE="gallery" ;;
+  3) TYPE="review" ;;
+  *) echo "❌ 1〜3の番号を入力してください"; exit 1 ;;
+esac
+
+echo "----------------------------------------"
+read -p "タイトル: " TITLE
 read -p "日付 (空欄で今日の日付): " DATE
 if [ -z "$DATE" ]; then
   DATE=$(date +%F)
 fi
-read -p "一覧に出す短い説明（抜粋）: " EXCERPT
+
+EXCERPT=""
+IMAGE=""
+AUTHOR=""
+RATING=5
+
+if [ "$TYPE" == "article" ]; then
+  read -p "一覧に出す短い説明（抜粋）: " EXCERPT
+elif [ "$TYPE" == "gallery" ]; then
+  read -p "投稿者名: " AUTHOR
+  echo "画像ファイル名（先に画像を minecraft-the-mod フォルダ直下にアップロードしておいてください）"
+  read -p "例: my-castle.png : " IMAGE
+elif [ "$TYPE" == "review" ]; then
+  read -p "投稿者名: " AUTHOR
+  read -p "評価 (1〜5の数字): " RATING
+  read -p "一覧に出す短い説明（抜粋）: " EXCERPT
+fi
 
 echo ""
 echo "本文を入力してください。空行で段落が分かれます。"
@@ -24,7 +53,7 @@ echo "入力が終わったら、Ctrlキーを押しながらDキーを押して
 echo "----------------------------------------"
 BODY_RAW=$(cat)
 
-# 一意な7桁のIDを生成（すでに使われていたら作り直す）
+# 一意な7桁のIDを生成
 while :; do
   NEW_ID=$((1000000 + RANDOM % 9000000))
   if [ ! -d "$SITE_DIR/$NEW_ID" ]; then
@@ -34,19 +63,31 @@ done
 
 mkdir -p "$SITE_DIR/$NEW_ID"
 
-# Python3があれば、それを使って安全にHTML生成 + articles.json更新を行う
-if command -v python3 >/dev/null 2>&1; then
-  python3 - "$NEW_ID" "$TITLE" "$DATE" "$EXCERPT" "$BODY_RAW" "$SITE_DIR" << 'PYEOF'
-import sys, json, html, re
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "⚠️ python3が見つかりません。sudo apt install python3 -y を実行してから、もう一度お試しください。"
+  exit 1
+fi
 
-new_id, title, date, excerpt, body_raw, site_dir = sys.argv[1:7]
+python3 - "$TYPE" "$NEW_ID" "$TITLE" "$DATE" "$EXCERPT" "$BODY_RAW" "$SITE_DIR" "$IMAGE" "$AUTHOR" "$RATING" << 'PYEOF'
+import sys, json, html
 
-# 空行区切りで段落化（HTMLエスケープ込み）
+TYPE, new_id, title, date, excerpt, body_raw, site_dir, image, author, rating = sys.argv[1:11]
+
 paragraphs = [p.strip() for p in body_raw.split("\n\n") if p.strip()]
 body_html = "\n  ".join(f"<p>{html.escape(p)}</p>" for p in paragraphs)
-
 title_esc = html.escape(title)
 excerpt_esc = html.escape(excerpt)
+
+if TYPE == "gallery":
+    extra_head = f'<img src="/minecraft-the-mod/{html.escape(image)}" style="width:100%;border-radius:12px;margin-bottom:1.5rem;border:1px solid rgba(46,230,107,.4)" alt="{title_esc}">'
+    meta_line = f'<div class="post-date">投稿者: {html.escape(author)} ・ {date}</div>'
+elif TYPE == "review":
+    stars = "★"*int(rating or 5) + "☆"*(5-int(rating or 5))
+    extra_head = f'<div style="color:#ff5252;font-size:20px;margin-bottom:1rem">{stars}</div>'
+    meta_line = f'<div class="post-date">by {html.escape(author)} ・ {date}</div>'
+else:
+    extra_head = ""
+    meta_line = f'<div class="post-date">{date}</div>'
 
 TEMPLATE = f"""<!DOCTYPE html>
 <html lang="ja">
@@ -106,14 +147,15 @@ footer{{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;
 </style>
 </head>
 <body>
-<div class="topbar"><a href="/minecraft-the-mod/articles/">← 運営ブログ一覧へ戻る</a></div>
+<div class="topbar"><a href="/minecraft-the-mod/{ {'article':'articles','gallery':'gallery','review':'reviews'}[TYPE] }/">← 一覧へ戻る</a></div>
 <div class="wrap">
-  <div class="post-date">{date}</div>
+  {meta_line}
   <h1>{title_esc}</h1>
+  {extra_head}
 
   {body_html}
 
-  <a class="back-link" href="/minecraft-the-mod/articles/">← 他の記事も見る</a>
+  <a class="back-link" href="/minecraft-the-mod/{ {'article':'articles','gallery':'gallery','review':'reviews'}[TYPE] }/">← 他も見る</a>
 
   <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
 </div>
@@ -125,39 +167,39 @@ footer{{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;
 with open(f"{site_dir}/{new_id}/index.html", "w", encoding="utf-8") as f:
     f.write(TEMPLATE)
 
-# articles.json に追記
-json_path = f"{site_dir}/articles.json"
+json_name = {"article": "articles.json", "gallery": "gallery.json", "review": "reviews.json"}[TYPE]
+json_path = f"{site_dir}/{json_name}"
 try:
     with open(json_path, encoding="utf-8") as f:
-        articles = json.load(f)
+        items = json.load(f)
 except Exception:
-    articles = []
+    items = []
 
-articles.insert(0, {
-    "id": new_id,
-    "title": title,
-    "date": date,
-    "excerpt": excerpt,
-    "published": True
-})
+entry = {"id": new_id, "title": title, "date": date, "published": True}
+if TYPE == "article":
+    entry["excerpt"] = excerpt
+elif TYPE == "gallery":
+    entry["author"] = author
+    entry["image"] = image
+elif TYPE == "review":
+    entry["author"] = author
+    entry["rating"] = int(rating or 5)
+    entry["excerpt"] = excerpt
+
+items.insert(0, entry)
 
 with open(json_path, "w", encoding="utf-8") as f:
-    json.dump(articles, f, ensure_ascii=False, indent=2)
+    json.dump(items, f, ensure_ascii=False, indent=2)
 
-print(f"✅ 記事を作成しました: /{new_id}/")
+print(f"✅ 作成しました: /{new_id}/  （{json_name} に登録済み）")
 PYEOF
-else
-  echo "⚠️ python3が見つからないため、自動生成できませんでした。"
-  echo "sudo apt install python3 -y を実行してから、もう一度お試しください。"
-  exit 1
-fi
 
 echo ""
 echo "----------------------------------------"
 echo "次にこれを実行して公開してください:"
 echo ""
 echo "  cd ~/minecraft-the-mod"
-echo "  git add $NEW_ID articles.json"
-echo "  git commit -m \"Add article: $TITLE\""
+echo "  git add -A"
+echo "  git commit -m \"Add content: $TITLE\""
 echo "  git push"
 echo ""

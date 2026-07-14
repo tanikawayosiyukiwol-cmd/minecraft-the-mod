@@ -21,6 +21,26 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/gallery/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/reviews/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/board/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/bug-report/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
     <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/articles/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>

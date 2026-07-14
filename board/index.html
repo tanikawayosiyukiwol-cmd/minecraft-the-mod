@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+(function(){
+  try{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/minecraft-the-mod/site-config.json?t=' + Date.now(), false);
+    xhr.send(null);
+    if(xhr.status === 200){
+      var cfg = JSON.parse(xhr.responseText);
+      if(cfg.maintenance === true && location.pathname.indexOf('/maintenance/') === -1){
+        location.replace('/minecraft-the-mod/maintenance/');
+      }
+    }
+  }catch(e){}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>掲示板 | マインクラフト.the.Mod</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/minecraft-the-mod/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/minecraft-the-mod/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/minecraft-the-mod/favicon-180.png">
+<link rel="icon" type="image/x-icon" href="/minecraft-the-mod/favicon.ico">
+<meta name="description" content="ご意見・ご質問・雑談などにご利用いただける掲示板です。GitHubアカウントで投稿できます。">
+<link rel="canonical" href="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/board/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="掲示板 | マインクラフト.the.Mod">
+<meta property="og:description" content="ご意見・ご質問・雑談などにご利用いただける掲示板です。GitHubアカウントで投稿できます。">
+<meta property="og:url" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/board/">
+<meta property="og:image" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ogp-image.jpg">
+<meta property="og:site_name" content="マインクラフト.the.Mod">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7faf8;--surface:#ffffff;--surface2:#eef6f0;
+  --border:rgba(46,230,107,.22);--border2:rgba(46,230,107,.4);
+  --cyan:#2ee66b;--gold:#ff5252;--text:#16241b;--muted:#5f7466;--muted2:#93a89b;
+  --pixel:"Press Start 2P";--sans:"Noto Sans JP",sans-serif;--mono:"JetBrains Mono",monospace;--r:6px;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+.wrap{max-width:780px;margin:0 auto;padding:0 1.5rem}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border2);height:56px;display:flex;align-items:center;padding:0 1.5rem}
+.topbar a{color:var(--muted);text-decoration:none;font-size:13px}
+.topbar a:hover{color:var(--cyan)}
+h1{font-family:var(--pixel);font-size:clamp(13px,3vw,18px);line-height:1.9;color:var(--text);padding:2.5rem 0 .5rem}
+.sub{color:var(--muted);font-size:13px;margin-bottom:1.6rem;line-height:1.8}
+.note{background:rgba(46,230,107,.06);border:1px solid var(--border2);border-radius:var(--r2);
+  padding:1rem 1.2rem;font-size:12px;color:#1a5c33;line-height:1.8;margin-bottom:1.6rem}
+footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
+  border-top:1px solid var(--border);margin-top:1.5rem}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="/minecraft-the-mod/">← マインクラフト.the.Mod トップへ戻る</a></div>
+<div class="wrap">
+  <h1>💬 掲示板</h1>
+  <p class="sub">ご意見・ご質問・雑談など、自由にご利用ください。</p>
+
+  <div class="note">
+    投稿にはGitHubアカウントが必要です（無料で作成できます）。誹謗中傷やスパムなどは削除させていただく場合があります。
+  </div>
+
+  <!-- giscus（GitHub Discussions）を使った掲示板 -->
+  <!--
+    ▼▼▼ セットアップ手順（コメント欄と同じ要領です）▼▼▼
+    1. https://giscus.app を開く
+    2. リポジトリ名を入力
+    3. 「Discussionで使用するカテゴリ」で、掲示板用に新しく作ったカテゴリ（例: Board）を選ぶ
+       ※GitHubのDiscussionsタブから、先に「Board」というカテゴリを作成しておくのがおすすめです
+    4. 生成されたコードの data-category と data-category-id を、下のscriptタグに反映する
+    5. data-mapping="specific" にし、data-term="board" のままにすると、
+       このページ専用の固定スレッドになります（記事ごとに自動でスレッドが分かれるコメント欄とは違う動きです）
+  -->
+  <script src="https://giscus.app/client.js"
+    data-repo="tanikawayosiyukiwol-cmd/minecraft-the-mod"
+    data-repo-id="R_kgDOSqRc3g"
+    data-category="【giscus.appで「Board」カテゴリを作成後、カテゴリ名に書き換えてください】"
+    data-category-id="【giscus.appで取得したcategory-idに書き換えてください】"
+    data-mapping="specific"
+    data-term="board"
+    data-strict="0"
+    data-reactions-enabled="1"
+    data-emit-metadata="0"
+    data-input-position="top"
+    data-theme="light"
+    data-lang="ja"
+    crossorigin="anonymous"
+    async>
+  </script>
+
+  <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
+</div>
+<script src="/minecraft-the-mod/transition.js"></script>
+</body>
+</html>
