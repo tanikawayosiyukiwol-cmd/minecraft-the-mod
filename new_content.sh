@@ -14,13 +14,19 @@ echo "----------------------------------------"
 echo "1) 記事（運営ブログ）"
 echo "2) ギャラリー（建築作品・スクリーンショット）"
 echo "3) レビュー・感想"
-read -p "番号を選んでください [1-3]: " TYPE_NUM
+echo "4) 小ネタ・豆知識"
+echo "5) イベント・企画"
+echo "6) プレイ日記"
+read -p "番号を選んでください [1-6]: " TYPE_NUM
 
 case "$TYPE_NUM" in
   1) TYPE="article" ;;
   2) TYPE="gallery" ;;
   3) TYPE="review" ;;
-  *) echo "❌ 1〜3の番号を入力してください"; exit 1 ;;
+  4) TYPE="trivia" ;;
+  5) TYPE="event" ;;
+  6) TYPE="diary" ;;
+  *) echo "❌ 1〜6の番号を入力してください"; exit 1 ;;
 esac
 
 echo "----------------------------------------"
@@ -44,6 +50,12 @@ elif [ "$TYPE" == "gallery" ]; then
 elif [ "$TYPE" == "review" ]; then
   read -p "投稿者名: " AUTHOR
   read -p "評価 (1〜5の数字): " RATING
+  read -p "一覧に出す短い説明（抜粋）: " EXCERPT
+elif [ "$TYPE" == "trivia" ]; then
+  read -p "一覧に出す短い説明（抜粋）: " EXCERPT
+elif [ "$TYPE" == "event" ]; then
+  read -p "一覧に出す短い説明（抜粋）: " EXCERPT
+elif [ "$TYPE" == "diary" ]; then
   read -p "一覧に出す短い説明（抜粋）: " EXCERPT
 fi
 
@@ -88,6 +100,11 @@ elif TYPE == "review":
 else:
     extra_head = ""
     meta_line = f'<div class="post-date">{date}</div>'
+
+LIST_PAGE = {
+    "article": "articles", "gallery": "gallery", "review": "reviews",
+    "trivia": "trivia", "event": "events", "diary": "diary",
+}[TYPE]
 
 TEMPLATE = f"""<!DOCTYPE html>
 <html lang="ja">
@@ -147,7 +164,7 @@ footer{{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;
 </style>
 </head>
 <body>
-<div class="topbar"><a href="/minecraft-the-mod/{ {'article':'articles','gallery':'gallery','review':'reviews'}[TYPE] }/">← 一覧へ戻る</a></div>
+<div class="topbar"><a href="/minecraft-the-mod/{LIST_PAGE}/">← 一覧へ戻る</a></div>
 <div class="wrap">
   {meta_line}
   <h1>{title_esc}</h1>
@@ -155,7 +172,7 @@ footer{{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;
 
   {body_html}
 
-  <a class="back-link" href="/minecraft-the-mod/{ {'article':'articles','gallery':'gallery','review':'reviews'}[TYPE] }/">← 他も見る</a>
+  <a class="back-link" href="/minecraft-the-mod/{LIST_PAGE}/">← 他も見る</a>
 
   <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
 </div>
@@ -167,7 +184,10 @@ footer{{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;
 with open(f"{site_dir}/{new_id}/index.html", "w", encoding="utf-8") as f:
     f.write(TEMPLATE)
 
-json_name = {"article": "articles.json", "gallery": "gallery.json", "review": "reviews.json"}[TYPE]
+json_name = {
+    "article": "articles.json", "gallery": "gallery.json", "review": "reviews.json",
+    "trivia": "trivia.json", "event": "events.json", "diary": "diary.json",
+}[TYPE]
 json_path = f"{site_dir}/{json_name}"
 try:
     with open(json_path, encoding="utf-8") as f:
@@ -184,6 +204,8 @@ elif TYPE == "gallery":
 elif TYPE == "review":
     entry["author"] = author
     entry["rating"] = int(rating or 5)
+    entry["excerpt"] = excerpt
+elif TYPE in ("trivia", "event", "diary"):
     entry["excerpt"] = excerpt
 
 items.insert(0, entry)

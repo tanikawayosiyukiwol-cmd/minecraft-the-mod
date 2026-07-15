@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+(function(){
+  try{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/minecraft-the-mod/site-config.json?t=' + Date.now(), false);
+    xhr.send(null);
+    if(xhr.status === 200){
+      var cfg = JSON.parse(xhr.responseText);
+      if(cfg.maintenance === true && location.pathname.indexOf('/maintenance/') === -1){
+        location.replace('/minecraft-the-mod/maintenance/');
+      }
+    }
+  }catch(e){}
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>イベント・企画 | マインクラフト.the.Mod</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/minecraft-the-mod/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/minecraft-the-mod/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/minecraft-the-mod/favicon-180.png">
+<link rel="icon" type="image/x-icon" href="/minecraft-the-mod/favicon.ico">
+<meta name="description" content="開催中・開催予定のイベントや企画のお知らせ一覧です。">
+<link rel="canonical" href="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/events/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="イベント・企画 | マインクラフト.the.Mod">
+<meta property="og:description" content="開催中・開催予定のイベントや企画のお知らせ一覧です。">
+<meta property="og:url" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/events/">
+<meta property="og:image" content="https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/ogp-image.jpg">
+<meta property="og:site_name" content="マインクラフト.the.Mod">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7faf8;--surface:#ffffff;--surface2:#eef6f0;
+  --border:rgba(46,230,107,.22);--border2:rgba(46,230,107,.4);
+  --cyan:#2ee66b;--gold:#ff5252;--text:#16241b;--muted:#5f7466;--muted2:#93a89b;
+  --pixel:"Press Start 2P";--sans:"Noto Sans JP",sans-serif;--mono:"JetBrains Mono",monospace;--r:6px;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden}
+.wrap{max-width:760px;margin:0 auto;padding:0 1.5rem}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border2);height:56px;display:flex;align-items:center;padding:0 1.5rem}
+.topbar a{color:var(--muted);text-decoration:none;font-size:13px}
+.topbar a:hover{color:var(--cyan)}
+h1{font-family:var(--pixel);font-size:clamp(13px,3vw,18px);line-height:1.9;color:var(--text);padding:2.5rem 0 .5rem}
+.sub{color:var(--muted);font-size:13px;margin-bottom:2rem;line-height:1.8}
+
+.e-card{display:flex;gap:1rem;align-items:center;background:var(--surface);border:1px solid var(--border2);
+  border-radius:var(--r2);padding:1.2rem 1.4rem;margin-bottom:.9rem;text-decoration:none;color:inherit;
+  cursor:pointer;transition:border-color .15s}
+.e-card:hover{border-color:var(--cyan)}
+.e-date{font-family:var(--mono);font-size:11px;color:var(--muted2);white-space:nowrap;flex-shrink:0;
+  background:var(--surface2);border-radius:var(--r);padding:.5rem .8rem;text-align:center}
+.e-body{flex:1}
+.e-badge{display:inline-block;font-family:var(--mono);font-size:9.5px;padding:.15rem .5rem;border-radius:10px;margin-bottom:.3rem}
+.e-badge.upcoming{background:rgba(46,230,107,.12);color:#0d8a3e}
+.e-badge.ended{background:rgba(147,168,155,.15);color:var(--muted2)}
+.e-title{font-size:14px;font-weight:700}
+
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
+  border-top:1px solid var(--border);margin-top:1rem}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="/minecraft-the-mod/">← マインクラフト.the.Mod トップへ戻る</a></div>
+<div class="wrap">
+  <h1>📅 イベント・企画</h1>
+  <p class="sub">開催中・開催予定のイベントや企画のお知らせです。</p>
+
+  <div id="event-list"></div>
+
+  <footer>© マインクラフト.the.Mod — Not affiliated with Mojang Studios.</footer>
+</div>
+
+<script src="/minecraft-the-mod/transition.js"></script>
+<script>
+async function run(){
+  let items = [];
+  try{
+    const res = await fetch("/minecraft-the-mod/events.json");
+    items = await res.json();
+  }catch{ items = []; }
+
+  const pub = items.filter(a => a.published).sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  const list = document.getElementById("event-list");
+
+  if(!pub.length){
+    list.innerHTML = `<div class="empty">現在、開催中・予定のイベントはありません。</div>`;
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+
+  list.innerHTML = pub.map(e => {
+    const isUpcoming = (e.date || "") >= today;
+    return `
+    <a class="e-card" onclick="event.preventDefault();pageGoTo('/minecraft-the-mod/${e.id}/')" href="/minecraft-the-mod/${e.id}/">
+      <div class="e-date">${e.date}</div>
+      <div class="e-body">
+        <span class="e-badge ${isUpcoming?'upcoming':'ended'}">${isUpcoming?'開催予定':'終了'}</span>
+        <div class="e-title">${e.title}</div>
+      </div>
+    </a>`;
+  }).join("");
+}
+run();
+</script>
+</body>
+</html>

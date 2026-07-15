@@ -21,6 +21,21 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/trivia/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/events/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/diary/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://tanikawayosiyukiwol-cmd.github.io/minecraft-the-mod/gallery/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
