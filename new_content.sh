@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==========================================================
 # new_content.sh
-# 番号URLのコンテンツ（記事・ギャラリー・レビュー）を作成するスクリプト
+# 番号URLのコンテンツ（記事・ギャラリー・レビュー・小ネタ・イベント・日記）を作成するスクリプト
 # 使い方: ./new_content.sh   を minecraft-the-mod フォルダの中で実行
 # ==========================================================
 set -e
@@ -83,7 +83,14 @@ fi
 python3 - "$TYPE" "$NEW_ID" "$TITLE" "$DATE" "$EXCERPT" "$BODY_RAW" "$SITE_DIR" "$IMAGE" "$AUTHOR" "$RATING" << 'PYEOF'
 import sys, json, html
 
-TYPE, new_id, title, date, excerpt, body_raw, site_dir, image, author, rating = sys.argv[1:11]
+def clean(s):
+    """貼り付け時などに紛れ込む壊れた文字コード（サロゲート文字）を安全な文字に直す"""
+    try:
+        return s.encode('utf-8', 'surrogateescape').decode('utf-8', 'replace')
+    except Exception:
+        return s
+
+TYPE, new_id, title, date, excerpt, body_raw, site_dir, image, author, rating = [clean(x) for x in sys.argv[1:11]]
 
 paragraphs = [p.strip() for p in body_raw.split("\n\n") if p.strip()]
 body_html = "\n  ".join(f"<p>{html.escape(p)}</p>" for p in paragraphs)
