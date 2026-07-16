@@ -100,6 +100,29 @@ excerpt_esc = html.escape(excerpt)
 if TYPE == "gallery":
     extra_head = f'<img src="/minecraft-the-mod/{html.escape(image)}" style="width:100%;border-radius:12px;margin-bottom:1.5rem;border:1px solid rgba(46,230,107,.4)" alt="{title_esc}">'
     meta_line = f'<div class="post-date">投稿者: {html.escape(author)} ・ {date}</div>'
+    # 投票用：giscusのリアクション（👍など）を投票代わりに使う
+    vote_widget = f'''
+  <div style="margin-top:2rem;padding:1.2rem;background:var(--surface2,#eef6f0);border:1px solid var(--border2,rgba(46,230,107,.4));border-radius:12px;text-align:center">
+    <p style="font-size:12.5px;color:var(--muted,#5f7466);margin-bottom:.8rem">👍 いいと思ったら、下のリアクションで投票してください！</p>
+    <script src="https://giscus.app/client.js"
+      data-repo="tanikawayosiyukiwol-cmd/minecraft-the-mod"
+      data-repo-id="R_kgDOSqRc3g"
+      data-category="【giscus.appで作成したカテゴリ名に書き換えてください】"
+      data-category-id="【giscus.appで取得したcategory-idに書き換えてください】"
+      data-mapping="specific"
+      data-term="gallery-{new_id}"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="top"
+      data-theme="light"
+      data-lang="ja"
+      crossorigin="anonymous"
+      async>
+    </script>
+  </div>'''
+else:
+    vote_widget = ""
 elif TYPE == "review":
     stars = "★"*int(rating or 5) + "☆"*(5-int(rating or 5))
     extra_head = f'<div style="color:#ff5252;font-size:20px;margin-bottom:1rem">{stars}</div>'
@@ -178,6 +201,7 @@ footer{{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;
   {extra_head}
 
   {body_html}
+  {vote_widget}
 
   <a class="back-link" href="/minecraft-the-mod/{LIST_PAGE}/">← 他も見る</a>
 
