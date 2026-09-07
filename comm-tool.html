@@ -199,7 +199,7 @@
     display: flex;
     justify-content: center;
   }
-  .qr-holder svg { width: 160px; height: 160px; }
+  .qr-holder svg { width: 100%; max-width: 320px; height: auto; display: block; }
   .qr-holder:empty { padding: 0; }
 
   .fallback {
@@ -390,7 +390,7 @@
         <button id="scanAnswer" class="btn btn--primary">📷 QRを読み取る</button>
         <label class="btn btn--ghost file-label">
           📁 ファイルを読み込む
-          <input type="file" id="loadAnswerFile" accept=".txt" hidden>
+          <input type="file" id="loadAnswerFile" accept=".txt,text/plain,*/*" hidden>
         </label>
         <details class="fallback">
           <summary>QRもファイルも使えない場合（テキストを貼り付け）</summary>
@@ -407,7 +407,7 @@
         <button id="scanOffer" class="btn btn--primary">📷 QRを読み取る</button>
         <label class="btn btn--ghost file-label">
           📁 ファイルを読み込む
-          <input type="file" id="loadOfferFile" accept=".txt" hidden>
+          <input type="file" id="loadOfferFile" accept=".txt,text/plain,*/*" hidden>
         </label>
         <details class="fallback">
           <summary>QRもファイルも使えない場合（テキストを貼り付け）</summary>
@@ -478,6 +478,7 @@
     <video id="qrScanVideo" playsinline muted autoplay></video>
     <canvas id="qrScanCanvas" hidden></canvas>
     <div id="qrScanBanner" class="banner" hidden></div>
+    <button id="qrSwitchCamera" class="btn btn--ghost" hidden>🔄 カメラ切替</button>
     <button id="qrScanCancel" class="btn btn--ghost">キャンセル</button>
   </div>
 </div>
@@ -12972,37 +12973,74 @@ let qrScanStream = null;
 let qrScanTargetId = null;
 let qrScanning = false;
 
-function openQrScanner(targetInputId) {
+let qrScanDevices = [];
+let qrScanDeviceIndex = 0;
+
+async function listCameras() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    qrScanDevices = devices.filter(d => d.kind === 'videoinput');
+  } catch (e) {
+    qrScanDevices = [];
+  }
+}
+
+async function startQrStream(deviceId) {
+  const constraints = deviceId
+    ? { video: { deviceId: { exact: deviceId } } }
+    : { video: { facingMode: { ideal: 'environment' } } };
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  qrScanStream = stream;
+  const video = document.getElementById('qrScanVideo');
+  video.srcObject = stream;
+  await video.play();
+  qrScanning = true;
+  requestAnimationFrame(qrScanTick);
+}
+
+async function openQrScanner(targetInputId) {
   qrScanTargetId = targetInputId;
   const modal = document.getElementById('qrScanModal');
   const banner = document.getElementById('qrScanBanner');
   banner.hidden = true;
   modal.hidden = false;
-  const video = document.getElementById('qrScanVideo');
 
-  const existingVideoTrack = localStream && localStream.getVideoTracks().find(t => t.readyState === 'live');
-  if (existingVideoTrack) {
-    // 通話ですでに使っているカメラをそのまま流用する（同じカメラを二重に取得しようとして失敗するのを防ぐ）
+  function useExistingCallCamera() {
+    const existingVideoTrack = localStream && localStream.getVideoTracks().find(t => t.readyState === 'live');
+    if (!existingVideoTrack) return false;
     qrScanStream = null;
+    const video = document.getElementById('qrScanVideo');
     video.srcObject = localStream;
     video.play();
     qrScanning = true;
     requestAnimationFrame(qrScanTick);
-    return;
+    return true;
   }
 
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-    .then(stream => {
-      qrScanStream = stream;
-      video.srcObject = stream;
-      video.play();
-      qrScanning = true;
-      requestAnimationFrame(qrScanTick);
-    })
-    .catch(err => {
-      showBanner(document.getElementById('qrScanBanner'), describeMediaError(err));
-    });
+  await listCameras();
+  qrScanDeviceIndex = 0;
+  document.getElementById('qrSwitchCamera').hidden = qrScanDevices.length < 2;
+
+  try {
+    // まずスマホの外カメラなど、QR読み取りに適した専用カメラを取りに行く
+    await startQrStream();
+  } catch (err) {
+    // 専用カメラが取得できない場合（例: PCのカメラが1つしかなく通話ですでに使用中）は、通話中のカメラを使い回す
+    if (useExistingCallCamera()) return;
+    showBanner(document.getElementById('qrScanBanner'), describeMediaError(err));
+  }
 }
+
+function switchCamera() {
+  if (qrScanDevices.length < 2) return;
+  if (qrScanStream) { qrScanStream.getTracks().forEach(t => t.stop()); qrScanStream = null; }
+  qrScanDeviceIndex = (qrScanDeviceIndex + 1) % qrScanDevices.length;
+  const device = qrScanDevices[qrScanDeviceIndex];
+  startQrStream(device.deviceId).catch(err => {
+    showBanner(document.getElementById('qrScanBanner'), describeMediaError(err));
+  });
+}
+document.getElementById('qrSwitchCamera').addEventListener('click', switchCamera);
 
 function qrScanTick() {
   if (!qrScanning) return;
@@ -13052,7 +13090,14 @@ function wireFileInput(inputId, targetTextareaId) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      document.getElementById(targetTextareaId).value = reader.result.trim();
+      const target = document.getElementById(targetTextareaId);
+      target.value = reader.result.trim();
+      const details = target.closest('details');
+      if (details) details.open = true;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    reader.onerror = () => {
+      showBanner(callBanner, 'ファイルの読み込みに失敗しました。もう一度お試しください。');
     };
     reader.readAsText(file);
     e.target.value = '';
