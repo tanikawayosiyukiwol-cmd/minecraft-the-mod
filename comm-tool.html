@@ -12915,8 +12915,7 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 });</script>
 <script>
 const STUN_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' }
+  { urls: 'stun:stun.l.google.com:19302' }
 ];
 
 // 共通の状態
@@ -12960,7 +12959,7 @@ function renderQrInto(elementId, text) {
   if (!text) return;
   try {
     const qr = qrcode(0, 'L');
-    qr.addData(text);
+    qr.addData(text, 'Alphanumeric');
     qr.make();
     holder.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
   } catch (e) {
@@ -13053,7 +13052,7 @@ function qrScanTick() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(imageData.data, imageData.width, imageData.height);
-    if (code && code.data && (code.data.startsWith('gz:') || code.data.startsWith('raw:'))) {
+    if (code && code.data && /^(GZ:|RAW:|gz:|raw:)/.test(code.data)) {
       document.getElementById(qrScanTargetId).value = code.data;
       closeQrScanner();
       return;
@@ -13159,15 +13158,48 @@ function waitForIceGathering(conn) {
   });
 }
 
-function arrayBufferToBase64(buf) {
-  let binary = '';
-  const bytes = new Uint8Array(buf);
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+// ---- Base45（QRの英数字モードでそのまま効率よく載る文字だけを使うエンコード） ----
+const BASE45_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+const BASE45_MAP = (() => {
+  const m = {};
+  for (let i = 0; i < BASE45_CHARS.length; i++) m[BASE45_CHARS[i]] = i;
+  return m;
+})();
+
+function base45Encode(bytes) {
+  let out = '';
+  let i = 0;
+  for (; i + 1 < bytes.length; i += 2) {
+    let n = (bytes[i] << 8) + bytes[i + 1];
+    const c = n % 45; n = (n - c) / 45;
+    const d = n % 45; n = (n - d) / 45;
+    out += BASE45_CHARS[c] + BASE45_CHARS[d] + BASE45_CHARS[n];
   }
-  return btoa(binary);
+  if (i < bytes.length) {
+    const n = bytes[i];
+    const c = n % 45;
+    const d = (n - c) / 45;
+    out += BASE45_CHARS[c] + BASE45_CHARS[d];
+  }
+  return out;
 }
+
+function base45Decode(str) {
+  const bytes = [];
+  let i = 0;
+  while (str.length - i >= 3) {
+    const n = BASE45_MAP[str[i]] + BASE45_MAP[str[i + 1]] * 45 + BASE45_MAP[str[i + 2]] * 45 * 45;
+    bytes.push((n >> 8) & 0xff, n & 0xff);
+    i += 3;
+  }
+  if (str.length - i === 2) {
+    const n = BASE45_MAP[str[i]] + BASE45_MAP[str[i + 1]] * 45;
+    bytes.push(n & 0xff);
+  }
+  return new Uint8Array(bytes);
+}
+
+// 互換用（古い形式のコードが貼られた場合の読み取りにのみ使用）
 function base64ToArrayBuffer(b64) {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
@@ -13175,20 +13207,39 @@ function base64ToArrayBuffer(b64) {
   return bytes.buffer;
 }
 
+// 接続に使わないTCP候補を除いて、コードを少しでも短くする
+function stripTcpCandidates(sdp) {
+  return sdp.split('\r\n').filter(line => !(line.startsWith('a=candidate:') && / tcp /.test(line))).join('\r\n');
+}
+function compactDescription(desc) {
+  return { type: desc.type, sdp: stripTcpCandidates(desc.sdp) };
+}
+
 async function encodeDescription(desc) {
-  const json = JSON.stringify(desc);
+  const json = JSON.stringify(compactDescription(desc));
   if (window.CompressionStream) {
     try {
       const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
       const buf = await new Response(stream).arrayBuffer();
-      return 'gz:' + arrayBufferToBase64(buf);
+      return 'GZ:' + base45Encode(new Uint8Array(buf));
     } catch (e) { /* 圧縮に失敗したら無圧縮にフォールバック */ }
   }
-  return 'raw:' + btoa(unescape(encodeURIComponent(json)));
+  return 'RAW:' + base45Encode(new TextEncoder().encode(json));
 }
 
 async function decodeDescription(code) {
   code = code.trim();
+  if (code.startsWith('GZ:')) {
+    const bytes = base45Decode(code.slice(3));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const text = await new Response(stream).text();
+    return JSON.parse(text);
+  }
+  if (code.startsWith('RAW:')) {
+    const bytes = base45Decode(code.slice(4));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+  // 互換: 以前のバージョンで作られたbase64形式のコードもそのまま読めるようにする
   if (code.startsWith('gz:')) {
     const buf = base64ToArrayBuffer(code.slice(3));
     const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
