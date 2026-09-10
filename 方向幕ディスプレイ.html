@@ -2798,7 +2798,7 @@ function scrollDirection(curIdx, newIdx, total) {
 function buildRollPath(curIdx, newIdx, direction, total) {
   if (curIdx === -1 || newIdx === -1 || curIdx === newIdx) return [newIdx];
   const diff = direction === 'up' ? (newIdx - curIdx + total) % total : (curIdx - newIdx + total) % total;
-  const maxHops = Math.min(diff, 4); // 経由地は最大4つまで（近ければそのまま、遠ければ間引く）
+  const maxHops = Math.min(diff, 10); // 経由地は最大4つまで（近ければそのまま、遠ければ間引く）
   const path = [];
   for (let i = 1; i <= maxHops; i++) {
     const offset = Math.round((i * diff) / maxHops);
