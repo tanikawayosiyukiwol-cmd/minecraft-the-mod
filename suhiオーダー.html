@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>スシロー 綾川ALUTO北館 ご注文</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+:root{
+  --bg:#0a0000;--surface:#180000;--card:#280808;--card2:#331010;
+  --border:#3d1010;--border2:#5a1818;
+  --red:#e63946;--gold:#ffc300;--green:#2dc653;
+  --text:#fff5f5;--muted:#a06060;--muted2:#cc8888;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;}
+
+/* SETUP */
+.setup{height:100%;overflow-y:auto;padding:20px 14px 60px;display:flex;flex-direction:column;gap:12px;max-width:480px;margin:0 auto;}
+.panel{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:11px;}
+h1{font-size:17px;font-weight:900;}
+.guide{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:11px 13px;font-size:13px;line-height:1.9;color:var(--muted2);}
+.guide strong{color:var(--text);}
+.banner{font-size:12px;padding:9px 11px;border-radius:6px;border-left:3px solid var(--red);background:rgba(230,57,70,.1);}
+.banner.info{border-left-color:var(--green);background:rgba(45,198,83,.08);}
+.btn{font-family:inherit;font-size:14px;padding:10px 16px;border-radius:7px;border:1px solid var(--border2);background:var(--card2);color:var(--text);cursor:pointer;transition:all .18s;width:100%;}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:700;}
+.btn.ghost{background:transparent;width:auto;}
+textarea{width:100%;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:monospace;font-size:12px;padding:10px;border-radius:6px;resize:vertical;height:64px;}
+.qr-box{background:#fff;border-radius:8px;padding:10px;display:flex;justify-content:center;}
+.qr-box svg{width:100%;max-width:260px;height:auto;display:block;}
+.row{display:flex;gap:8px;}
+[hidden]{display:none!important;}
+.field-label{font-size:12px;color:var(--muted2);}
+input[type=text]{width:100%;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:14px;padding:10px;border-radius:6px;}
+
+/* QR SCAN MODAL */
+.qr-modal{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;}
+.qr-modal-inner{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;max-width:340px;width:100%;}
+.qr-modal-inner video{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#000;}
+
+/* HEADER */
+.hd{
+  position:fixed;top:0;left:0;right:0;height:62px;z-index:100;
+  background:linear-gradient(135deg,#8b0000,#c0392b);
+  display:flex;align-items:center;padding:0 12px;gap:8px;
+  box-shadow:0 3px 16px rgba(0,0,0,.6);
+}
+.hd-logo{font-size:17px;font-weight:900;color:#fff;flex:1;line-height:1.3;}
+.hd-logo small{display:block;font-size:8px;font-weight:400;opacity:.8;}
+.hd-conn{width:8px;height:8px;border-radius:50%;background:#555;flex-shrink:0;}
+.hd-conn.on{background:#69F0AE;box-shadow:0 0 8px #69F0AE;}
+.hd-tbl{background:rgba(0,0,0,.3);color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;}
+.cart-btn{background:#fff;color:var(--red);border:none;cursor:pointer;padding:7px 12px;border-radius:16px;font-size:13px;font-weight:700;font-family:inherit;position:relative;flex-shrink:0;}
+.cbadge{position:absolute;top:-7px;right:-7px;background:var(--gold);color:#000;border-radius:50%;width:19px;height:19px;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;}
+
+/* CATS */
+.cats{position:fixed;top:62px;left:0;right:0;z-index:90;background:var(--surface);border-bottom:1px solid var(--border2);overflow-x:auto;white-space:nowrap;padding:8px 10px;scrollbar-width:none;}
+.cats::-webkit-scrollbar{display:none;}
+.cat{display:inline-block;padding:6px 13px;margin-right:6px;border-radius:16px;border:1.5px solid var(--border2);background:var(--card);color:var(--muted2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.cat.on{background:var(--red);color:#fff;border-color:var(--red);}
+
+/* MAIN */
+.main{position:fixed;top:108px;left:0;right:0;bottom:0;overflow-y:auto;padding:10px;scrollbar-width:thin;}
+.stitle{font-size:14px;font-weight:900;color:var(--gold);margin:4px 0 8px;display:flex;align-items:center;gap:6px;}
+.stitle::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--border2),transparent);}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;}
+@media(min-width:480px){.grid{grid-template-columns:repeat(4,1fr);}}
+
+.ic{background:var(--card);border-radius:11px;border:1px solid var(--border);padding:9px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:110px;justify-content:space-between;position:relative;overflow:hidden;}
+.ic:active{transform:scale(.93);}
+.ic.fl{animation:fl .25s ease;}
+@keyframes fl{50%{background:#4a0000;border-color:var(--red);}}
+.ic-tag{position:absolute;top:5px;right:5px;font-size:8px;font-weight:700;padding:2px 4px;border-radius:4px;}
+.tp{background:var(--red);color:#fff;} .tn{background:var(--green);color:#000;} .tl{background:#6a0dad;color:#fff;}
+.ic-em{font-size:28px;line-height:1;margin-bottom:4px;}
+.ic-nm{font-size:11px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:2px;}
+.ic-ds{font-size:9px;color:var(--muted);line-height:1.3;margin-bottom:3px;}
+.ic-pr{font-size:12px;font-weight:900;color:var(--gold);}
+.ic-pr span{font-size:9px;font-weight:400;color:var(--muted);}
+
+/* CART */
+.cov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:flex-end;}
+.cov.on{display:flex;}
+.cp{width:100%;background:var(--surface);border-radius:18px 18px 0 0;max-height:88vh;display:flex;flex-direction:column;border-top:2px solid var(--red);box-shadow:0 -8px 28px rgba(0,0,0,.6);}
+.ch{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;}
+.ch h2{font-size:17px;font-weight:900;color:var(--gold);flex:1;}
+.xb{background:var(--card);border:none;color:var(--muted);cursor:pointer;width:30px;height:30px;border-radius:50%;font-size:15px;display:flex;align-items:center;justify-content:center;}
+.cb2{flex:1;overflow-y:auto;padding:10px 16px;}
+.cmt{text-align:center;color:var(--muted);padding:22px 0;font-size:14px;}
+.ci2{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);}
+.ci2-e{font-size:20px;}
+.ci2-i{flex:1;}
+.ci2-n{font-size:13px;font-weight:700;}
+.ci2-p{font-size:11px;color:var(--muted);}
+.qty{display:flex;align-items:center;gap:6px;}
+.qb{background:var(--card);border:1px solid var(--border2);color:var(--text);width:26px;height:26px;border-radius:50%;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.qn{font-size:14px;font-weight:700;min-width:18px;text-align:center;}
+.cf2{padding:12px 16px;border-top:1px solid var(--border);}
+.ctot{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.ctot-l{font-size:14px;color:var(--muted2);}
+.ctot-a{font-size:20px;font-weight:900;color:var(--gold);}
+.note{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:8px 10px;font-size:12px;margin-bottom:10px;font-family:inherit;resize:none;outline:none;}
+.obtn{width:100%;background:var(--red);color:#fff;border:none;padding:13px;border-radius:11px;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;}
+.obtn:disabled{background:#555;cursor:not-allowed;}
+.sp{width:17px;height:17px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spi .7s linear infinite;display:none;}
+.obtn.ld .sp{display:block;} .obtn.ld .bt{display:none;}
+@keyframes spi{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{position:fixed;bottom:65px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--card);border:1px solid var(--red);color:var(--text);padding:8px 16px;border-radius:20px;font-size:12px;font-weight:700;z-index:350;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* SUCCESS */
+.sov{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:400;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:24px;}
+.sov.on{display:flex;}
+.sico{font-size:62px;animation:bi .45s ease;}
+@keyframes bi{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.stit{font-size:22px;font-weight:900;color:var(--gold);}
+.soid{font-size:16px;font-weight:900;color:var(--red);}
+.ssub{font-size:13px;color:var(--muted2);line-height:1.8;}
+.sokb{background:var(--red);color:#fff;border:none;padding:12px 32px;border-radius:22px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:6px;}
+</style>
+</head>
+<body>
+
+<!-- SETUP (接続前) -->
+<div class="setup" id="setup">
+  <div class="panel">
+    <h1>🍣 スシロー 綾川ALUTO北館5F</h1>
+    <div class="guide">
+      <strong>① キッチン画面のQRコードを「スキャン」で読み取る</strong><br>
+      <strong>② 表示された返事コードをキッチン画面に送る</strong><br>
+      <strong>③ 接続完了でメニューが開きます！</strong>
+    </div>
+
+    <div class="field-label">テーブル番号</div>
+    <input type="text" id="tableInput" value="1" placeholder="テーブル番号を入力" />
+
+    <div id="setupBanner" class="banner" hidden></div>
+
+    <div id="ss1">
+      <button class="btn primary" id="btnScan">📷 QRをスキャン</button>
+      <label class="btn" style="margin-top:8px;display:block;text-align:center;cursor:pointer;">
+        📁 ファイルで読み込む
+        <input type="file" id="loadOffer" accept=".txt,*/*" hidden>
+      </label>
+      <details style="font-size:12px;color:var(--muted);margin-top:8px;">
+        <summary style="cursor:pointer;padding:4px 0;">テキストを貼り付ける場合</summary>
+        <textarea id="offerTxt" placeholder="キッチンのコードを貼り付け" style="margin-top:6px;"></textarea>
+      </details>
+      <button class="btn primary" id="btnJoin" style="margin-top:8px;">🔗 コードで接続する</button>
+    </div>
+
+    <div id="ss2" hidden>
+      <p style="font-size:13px;color:var(--muted2);">下のQRコードまたはコードをキッチン画面に送ってください</p>
+      <div class="qr-box" id="answerQr"></div>
+      <button id="btnSaveAnswer" class="btn ghost" style="margin-top:8px;width:auto;">💾 ファイルで保存して送る</button>
+      <details style="font-size:12px;color:var(--muted);margin-top:8px;">
+        <summary style="cursor:pointer;padding:4px 0;">テキストでコピーする場合</summary>
+        <div class="row" style="margin-top:6px;">
+          <textarea id="answerTxt" readonly></textarea>
+          <button class="btn ghost" id="btnCopyAnswer">コピー</button>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<!-- QR SCANNER MODAL -->
+<div class="qr-modal" id="qrModal" hidden>
+  <div class="qr-modal-inner">
+    <p style="font-size:13px;font-weight:700;">キッチン画面のQRコードを映してください</p>
+    <video id="qrVideo" playsinline muted autoplay></video>
+    <canvas id="qrCanvas" hidden></canvas>
+    <div id="qrBanner" class="banner" hidden></div>
+    <button id="btnSwitchCam" class="btn ghost" hidden>🔄 カメラ切替</button>
+    <button id="btnCancelScan" class="btn ghost">キャンセル</button>
+  </div>
+</div>
+
+<!-- ORDER PAGE (接続後) -->
+<div id="orderPage" style="display:none;height:100%;">
+  <header class="hd">
+    <div class="hd-logo">🍣 スシロー<small>綾川ALUTO北館5Fフードリバー店</small></div>
+    <div class="hd-conn on" id="connDot"></div>
+    <div class="hd-tbl" id="tblLbl"></div>
+    <button class="cart-btn" onclick="openCart()">
+      🛒 カート
+      <span class="cbadge" id="cbadge" style="display:none">0</span>
+    </button>
+  </header>
+  <nav class="cats" id="catBar"></nav>
+  <main class="main" id="menuMain"></main>
+  <div class="toast" id="toast"></div>
+
+  <!-- CART -->
+  <div class="cov" id="cartOv" onclick="bgClick(event)">
+    <div class="cp">
+      <div class="ch"><h2>🛒 ご注文内容</h2><button class="xb" onclick="closeCart()">✕</button></div>
+      <div class="cb2" id="cartBody"></div>
+      <div class="cf2">
+        <div class="ctot"><span class="ctot-l">合計（税込）</span><span class="ctot-a" id="cartAmt">¥0</span></div>
+        <textarea class="note" id="noteArea" rows="2" placeholder="備考・アレルギーなどあればご記入ください"></textarea>
+        <button class="obtn" id="ordBtn" onclick="doOrder()" disabled>
+          <div class="sp"></div><span class="bt">注文を確定する 🍣</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="sov" id="succOv">
+    <div class="sico">🎉</div>
+    <div class="stit">ご注文ありがとうございます！</div>
+    <div class="soid" id="succId"></div>
+    <div class="ssub">まもなくお持ちいたします。<br>引き続きご注文どうぞ。</div>
+    <button class="sokb" onclick="closeSucc()">続けて注文する</button>
+  </div>
+</div>
+
+<script>
+// ── WebRTC utilities (shared) ──
+const STUN=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}];
+function waitIce(pc){return new Promise(res=>{if(pc.iceGatheringState==='complete'){res();return;}const h=()=>{if(pc.iceGatheringState==='complete'){pc.removeEventListener('icegatheringstatechange',h);res();}};pc.addEventListener('icegatheringstatechange',h);setTimeout(res,6000);});}
+const B45='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+const B45M=Object.fromEntries([...B45].map((c,i)=>[c,i]));
+function b45enc(u){let o='';for(let i=0;i<u.length;i+=2){if(i+1<u.length){const n=u[i]*256+u[i+1];o+=B45[n%45]+B45[Math.floor(n/45)%45]+B45[Math.floor(n/1755)];}else{const n=u[i];o+=B45[n%45]+B45[Math.floor(n/45)];}}return o;}
+function b45dec(s){const b=[];for(let i=0;i<s.length;i+=3){if(s.length-i>=3){const n=B45M[s[i]]+B45M[s[i+1]]*45+B45M[s[i+2]]*2025;b.push(n>>8,n&255);}else if(s.length-i===2){b.push(B45M[s[i]]+B45M[s[i+1]]*45);}}return new Uint8Array(b);}
+async function encDesc(desc){const j=JSON.stringify({type:desc.type,sdp:desc.sdp});if(window.CompressionStream){try{const s=new Blob([j]).stream().pipeThrough(new CompressionStream('gzip'));const b=await new Response(s).arrayBuffer();return'GZ:'+b45enc(new Uint8Array(b));}catch{}}return'RAW:'+b45enc(new TextEncoder().encode(j));}
+async function decDesc(c){c=c.trim();if(c.startsWith('GZ:')){const b=b45dec(c.slice(3));const s=new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(s).text());}if(c.startsWith('RAW:')){return JSON.parse(new TextDecoder().decode(b45dec(c.slice(4))));}throw new Error('コード形式が不正です');}
+function makeQR(el,text){el.innerHTML='';try{const q=qrcode(0,'L');q.addData(text,'Alphanumeric');q.make();el.innerHTML=q.createSvgTag({cellSize:4,margin:2,scalable:true});}catch{el.innerHTML='<p style="font-size:11px;color:#888;">QR化できません。テキストを使用してください。</p>';}}
+function dlFile(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.download=name;a.click();}
+function banner(el,msg,type='err'){el.textContent=msg;el.className='banner'+(type==='info'?' info':'');el.hidden=false;}
+
+// ── WebRTC connection ──
+let pc=null, dc=null;
+
+async function joinWithOffer(offerCode){
+  pc=new RTCPeerConnection({iceServers:STUN});
+  pc.ondatachannel=(e)=>{
+    dc=e.channel;
+    dc.onopen=()=>{ onConnected(); };
+    dc.onclose=()=>{ document.getElementById('connDot').className='hd-conn'; };
+  };
+  const offer=await decDesc(offerCode);
+  await pc.setRemoteDescription(offer);
+  const answer=await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  await waitIce(pc);
+  const code=await encDesc(pc.localDescription);
+  document.getElementById('answerTxt').value=code;
+  makeQR(document.getElementById('answerQr'),code);
+  document.getElementById('ss1').hidden=true;
+  document.getElementById('ss2').hidden=false;
+  banner(document.getElementById('setupBanner'),'返事コードができました！キッチン画面に送ってください','info');
+}
+
+document.getElementById('btnJoin').addEventListener('click',async()=>{
+  const code=document.getElementById('offerTxt').value.trim();
+  if(!code){banner(document.getElementById('setupBanner'),'キッチンのコードを貼り付けてください');return;}
+  try{await joinWithOffer(code);}
+  catch(e){banner(document.getElementById('setupBanner'),'エラー: '+e.message);}
+});
+document.getElementById('loadOffer').addEventListener('change',(e)=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=async()=>{
+    document.getElementById('offerTxt').value=r.result.trim();
+    try{await joinWithOffer(r.result.trim());}
+    catch(err){banner(document.getElementById('setupBanner'),'エラー: '+err.message);}
+  };r.readAsText(f);e.target.value='';
+});
+document.getElementById('btnSaveAnswer').addEventListener('click',()=>{
+  const v=document.getElementById('answerTxt').value;if(v)dlFile('tablet-answer.txt',v);
+});
+document.getElementById('btnCopyAnswer').addEventListener('click',async(e)=>{
+  const v=document.getElementById('answerTxt').value;
+  try{await navigator.clipboard.writeText(v);e.target.textContent='コピー済';setTimeout(()=>e.target.textContent='コピー',1500);}
+  catch{alert('手動でコピーしてください');}
+});
+
+// ── QR SCANNER ──
+let scanStream=null,scanDevices=[],scanIdx=0,scanning=false;
+async function openScanner(){
+  document.getElementById('qrModal').hidden=false;
+  document.getElementById('qrBanner').hidden=true;
+  const devs=await navigator.mediaDevices.enumerateDevices().catch(()=>[]);
+  scanDevices=devs.filter(d=>d.kind==='videoinput');
+  document.getElementById('btnSwitchCam').hidden=scanDevices.length<2;
+  await startScan();
+}
+async function startScan(id){
+  const c=id?{video:{deviceId:{exact:id}}}:{video:{facingMode:{ideal:'environment'}}};
+  scanStream=await navigator.mediaDevices.getUserMedia(c);
+  const v=document.getElementById('qrVideo');v.srcObject=scanStream;await v.play();
+  scanning=true;requestAnimationFrame(scanTick);
+}
+function scanTick(){
+  if(!scanning)return;
+  const v=document.getElementById('qrVideo'),c=document.getElementById('qrCanvas');
+  if(v.readyState===v.HAVE_ENOUGH_DATA){
+    c.width=v.videoWidth;c.height=v.videoHeight;
+    const ctx=c.getContext('2d');ctx.drawImage(v,0,0);
+    const img=ctx.getImageData(0,0,c.width,c.height);
+    const code=jsQR(img.data,img.width,img.height);
+    if(code&&code.data&&/^(GZ:|RAW:)/.test(code.data)){
+      document.getElementById('offerTxt').value=code.data;
+      closeScanner();
+      joinWithOffer(code.data).catch(e=>banner(document.getElementById('setupBanner'),'エラー: '+e.message));
+      return;
+    }
+  }
+  requestAnimationFrame(scanTick);
+}
+function closeScanner(){scanning=false;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}document.getElementById('qrModal').hidden=true;}
+document.getElementById('btnScan').addEventListener('click',()=>openScanner().catch(e=>banner(document.getElementById('setupBanner'),'カメラエラー: '+e.message)));
+document.getElementById('btnCancelScan').addEventListener('click',closeScanner);
+document.getElementById('btnSwitchCam').addEventListener('click',()=>{if(scanStream){scanStream.getTracks().forEach(t=>t.stop());}scanIdx=(scanIdx+1)%scanDevices.length;startScan(scanDevices[scanIdx].deviceId).catch(()=>{});});
+
+// ── ON CONNECTED ──
+function onConnected(){
+  document.getElementById('setup').style.display='none';
+  document.getElementById('orderPage').style.display='block';
+  document.getElementById('connDot').className='hd-conn on';
+  const tbl=document.getElementById('tableInput').value.trim()||'1';
+  document.getElementById('tblLbl').textContent='テーブル '+tbl;
+  buildMenu();
+}
+
+// ── MENU ──
+const MENU={
+  "定番にぎり":{emoji:"🍣",items:[
+    {id:"n01",name:"まぐろ",emoji:"🐟",desc:"本まぐろ赤身",price:165,tag:"p"},
+    {id:"n02",name:"サーモン",emoji:"🐠",desc:"ノルウェー産サーモン",price:165,tag:"p"},
+    {id:"n03",name:"えび",emoji:"🦐",desc:"ぷりぷり甘えび",price:165,tag:"p"},
+    {id:"n04",name:"いか",emoji:"🦑",desc:"新鮮するめいか",price:165},
+    {id:"n05",name:"たこ",emoji:"🐙",desc:"やわらかたこ",price:165},
+    {id:"n06",name:"はまち",emoji:"🐟",desc:"脂ののったはまち",price:165,tag:"p"},
+    {id:"n07",name:"いくら",emoji:"🍱",desc:"濃厚いくら醤油漬け",price:220,tag:"p"},
+    {id:"n08",name:"うに",emoji:"🌊",desc:"北海道産うに",price:330,tag:"l"},
+    {id:"n09",name:"あなご",emoji:"🐍",desc:"ふわふわ煮あなご",price:220},
+    {id:"n10",name:"たまご",emoji:"🥚",desc:"だし巻き玉子",price:110},
+    {id:"n11",name:"かっぱ巻き",emoji:"🥒",desc:"きゅうりとごまのり巻き",price:110},
+    {id:"n12",name:"ねぎとろ巻き",emoji:"🐟",desc:"とろとろねぎとろ",price:165},
+  ]},
+  "プレミアム":{emoji:"👑",items:[
+    {id:"pr01",name:"大とろ",emoji:"🐟",desc:"本まぐろ大とろ",price:550,tag:"l"},
+    {id:"pr02",name:"中とろ",emoji:"🐟",desc:"本まぐろ中とろ",price:385,tag:"l"},
+    {id:"pr03",name:"生ほたて",emoji:"🦪",desc:"北海道産帆立",price:275,tag:"l"},
+    {id:"pr04",name:"生かき",emoji:"🦪",desc:"季節の生牡蠣",price:330,tag:"l"},
+    {id:"pr05",name:"ずわいがに",emoji:"🦀",desc:"ずわいがに爪",price:385,tag:"l"},
+    {id:"pr06",name:"のどぐろ",emoji:"🐟",desc:"幻の魚のどぐろ",price:440,tag:"l"},
+    {id:"pr07",name:"あわび",emoji:"🐚",desc:"やわらか蒸しあわび",price:550,tag:"l"},
+    {id:"pr08",name:"黒毛和牛炙り",emoji:"🥩",desc:"A5黒毛和牛炙り",price:495,tag:"l"},
+  ]},
+  "軍艦・変わり種":{emoji:"🌊",items:[
+    {id:"g01",name:"えんがわ軍艦",emoji:"🌊",desc:"ひらめえんがわ",price:165},
+    {id:"g02",name:"ねぎとろ軍艦",emoji:"🌊",desc:"ねぎとろたっぷり",price:165,tag:"p"},
+    {id:"g03",name:"コーン軍艦",emoji:"🌽",desc:"マヨコーン",price:110},
+    {id:"g04",name:"納豆軍艦",emoji:"🫘",desc:"ひきわり納豆",price:110},
+    {id:"g05",name:"ツナサラダ軍艦",emoji:"🥗",desc:"マヨツナ",price:110},
+    {id:"g06",name:"アボカドサーモン",emoji:"🥑",desc:"クリーミーアボカド",price:165,tag:"n"},
+    {id:"g07",name:"サーモンクリームチーズ",emoji:"🧀",desc:"濃厚クリームチーズ",price:220,tag:"n"},
+    {id:"g08",name:"えびアボカド",emoji:"🦐",desc:"えびアボカドマヨ",price:165,tag:"n"},
+    {id:"g09",name:"明太マヨ",emoji:"🌶",desc:"辛子明太マヨ",price:165},
+    {id:"g10",name:"かにかまサラダ",emoji:"🦀",desc:"かにかまクリーミー",price:110},
+  ]},
+  "炙り・焼き":{emoji:"🔥",items:[
+    {id:"a01",name:"サーモン炙り",emoji:"🔥",desc:"バーナーで炙り",price:220,tag:"p"},
+    {id:"a02",name:"えび炙り",emoji:"🦐",desc:"プリプリえび炙り",price:220},
+    {id:"a03",name:"いか炙り",emoji:"🦑",desc:"甘辛タレ炙りいか",price:220},
+    {id:"a04",name:"チーズ焼きサーモン",emoji:"🧀",desc:"チーズたっぷり炙り",price:275,tag:"n"},
+    {id:"a05",name:"ほたて炙り",emoji:"🦪",desc:"バター醤油炙りほたて",price:275},
+    {id:"a06",name:"まぐろ炙り",emoji:"🔥",desc:"甘辛タレまぐろ炙り",price:275,tag:"p"},
+  ]},
+  "巻き物":{emoji:"🌯",items:[
+    {id:"m01",name:"鉄火巻き",emoji:"🐟",desc:"まぐろ細巻き",price:220,tag:"p"},
+    {id:"m02",name:"サーモン巻き",emoji:"🐠",desc:"サーモン細巻き",price:220},
+    {id:"m03",name:"えびアボカド巻き",emoji:"🦐",desc:"太巻き",price:275,tag:"n"},
+    {id:"m04",name:"スパイシーツナ巻き",emoji:"🌶",desc:"ピリ辛ツナ巻き",price:220},
+    {id:"m05",name:"手巻きまぐろ",emoji:"🌯",desc:"パリパリ海苔手巻き",price:165},
+    {id:"m06",name:"手巻きサーモン",emoji:"🌯",desc:"クリームチーズ入り",price:165,tag:"n"},
+    {id:"m07",name:"手巻きえびマヨ",emoji:"🌯",desc:"えびマヨネーズ",price:165},
+  ]},
+  "サイドメニュー":{emoji:"🍜",items:[
+    {id:"s01",name:"茶碗蒸し",emoji:"🥚",desc:"だし香る茶碗蒸し",price:220,tag:"p"},
+    {id:"s02",name:"みそ汁",emoji:"🍵",desc:"しじみ入りみそ汁",price:165},
+    {id:"s03",name:"うどん",emoji:"🍜",desc:"かけうどん",price:275},
+    {id:"s04",name:"ラーメン",emoji:"🍜",desc:"しょうゆラーメン",price:385},
+    {id:"s05",name:"フライドポテト",emoji:"🍟",desc:"サクサクポテト",price:275},
+    {id:"s06",name:"からあげ",emoji:"🍗",desc:"ジューシー唐揚げ3個",price:275,tag:"p"},
+    {id:"s07",name:"えびフライ",emoji:"🦐",desc:"えびフライ2本",price:330},
+    {id:"s08",name:"枝豆",emoji:"🫘",desc:"塩ゆで枝豆",price:165},
+    {id:"s09",name:"たこ焼き",emoji:"🐙",desc:"たこ焼き6個",price:275},
+    {id:"s10",name:"ポテトサラダ",emoji:"🥗",desc:"なめらかポテサラ",price:220},
+  ]},
+  "デザート":{emoji:"🍮",items:[
+    {id:"d01",name:"バニラアイス",emoji:"🍦",desc:"なめらかバニラ",price:165,tag:"p"},
+    {id:"d02",name:"抹茶アイス",emoji:"🍵",desc:"濃厚抹茶ソフト",price:165},
+    {id:"d03",name:"プリン",emoji:"🍮",desc:"とろとろプリン",price:220,tag:"n"},
+    {id:"d04",name:"チーズケーキ",emoji:"🧁",desc:"ニューヨークチーズ",price:275,tag:"n"},
+    {id:"d05",name:"いちごパフェ",emoji:"🍓",desc:"いちごたっぷりパフェ",price:385,tag:"n"},
+    {id:"d06",name:"わらびもち",emoji:"🍡",desc:"黒蜜きなこわらびもち",price:220,tag:"p"},
+    {id:"d07",name:"みたらし団子",emoji:"🍡",desc:"甘辛みたらし",price:165},
+  ]},
+  "ドリンク":{emoji:"🥤",items:[
+    {id:"dr01",name:"緑茶",emoji:"🍵",desc:"熱い / 冷たい",price:110},
+    {id:"dr02",name:"コーラ",emoji:"🥤",desc:"コカ・コーラ",price:220},
+    {id:"dr03",name:"オレンジジュース",emoji:"🍊",desc:"100%オレンジ",price:220},
+    {id:"dr04",name:"カルピスソーダ",emoji:"🥛",desc:"カルピスソーダ",price:220},
+    {id:"dr05",name:"お水",emoji:"💧",desc:"ミネラルウォーター",price:110},
+    {id:"dr06",name:"コーヒー",emoji:"☕",desc:"ホット / アイス",price:220},
+    {id:"dr07",name:"ラムネ",emoji:"🫧",desc:"懐かしのラムネ",price:220},
+  ]},
+  "ビール・お酒":{emoji:"🍺",items:[
+    {id:"b01",name:"生ビール（中）",emoji:"🍺",desc:"サッポロ生ビール",price:550,tag:"p"},
+    {id:"b02",name:"生ビール（大）",emoji:"🍺",desc:"サッポロ生ビール 大",price:660},
+    {id:"b03",name:"ハイボール",emoji:"🥃",desc:"サントリー角ハイボール",price:495,tag:"p"},
+    {id:"b04",name:"レモンサワー",emoji:"🍋",desc:"濃いめレモンサワー",price:495,tag:"p"},
+    {id:"b05",name:"日本酒（冷）",emoji:"🍶",desc:"純米吟醸",price:550},
+    {id:"b06",name:"マッコリ",emoji:"🥛",desc:"韓国マッコリ",price:495},
+    {id:"b07",name:"ノンアルビール",emoji:"🍺",desc:"ノンアルコール",price:330},
+  ]},
+};
+
+function buildMenu(){
+  const cb=document.getElementById('catBar'), mm=document.getElementById('menuMain');
+  const TG={p:'人気',n:'NEW',l:'限定'};
+  const TC={p:'tp',n:'tn',l:'tl'};
+  Object.keys(MENU).forEach((cat,i)=>{
+    const tab=document.createElement('div');
+    tab.className='cat'+(i===0?' on':'');tab.textContent=MENU[cat].emoji+' '+cat;tab.dataset.cat=cat;
+    tab.onclick=()=>{document.getElementById('sec_'+cat)?.scrollIntoView({behavior:'smooth'});document.querySelectorAll('.cat').forEach(b=>b.classList.remove('on'));tab.classList.add('on');};
+    cb.appendChild(tab);
+    const sec=document.createElement('div');sec.id='sec_'+cat;
+    const tit=document.createElement('div');tit.className='stitle';tit.textContent=MENU[cat].emoji+' '+cat;sec.appendChild(tit);
+    const grid=document.createElement('div');grid.className='grid';
+    MENU[cat].items.forEach(item=>{
+      const c=document.createElement('div');c.className='ic';
+      c.innerHTML=(item.tag?`<span class="ic-tag ${TC[item.tag]}">${TG[item.tag]}</span>`:'')+
+        `<div class="ic-em">${item.emoji}</div><div class="ic-nm">${item.name}</div><div class="ic-ds">${item.desc}</div><div class="ic-pr">¥${item.price.toLocaleString()}<span>（税込）</span></div>`;
+      c.onclick=()=>addItem(item,c);grid.appendChild(c);
+    });
+    sec.appendChild(grid);mm.appendChild(sec);
+  });
+  new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){const cat=e.target.id.replace('sec_','');document.querySelectorAll('.cat').forEach(b=>b.classList.toggle('on',b.dataset.cat===cat));}});},{threshold:.2}).observe && document.querySelectorAll('[id^=sec_]').forEach(el=>new IntersectionObserver(en=>{if(en[0].isIntersecting){const c=en[0].target.id.replace('sec_','');document.querySelectorAll('.cat').forEach(b=>b.classList.toggle('on',b.dataset.cat===c));}},{threshold:.2}).observe(el));
+}
+
+// ── CART ──
+let cart={};
+function addItem(item,el){
+  if(!cart[item.id])cart[item.id]={...item,qty:0};
+  cart[item.id].qty++;updateBadge();
+  el.classList.add('fl');setTimeout(()=>el.classList.remove('fl'),280);
+  showToast('🛒 '+item.name+' を追加しました');
+}
+function chQty(id,d){if(!cart[id])return;cart[id].qty=Math.max(0,cart[id].qty+d);if(cart[id].qty===0)delete cart[id];updateBadge();renderCart();}
+window.chQty=chQty;
+function updateBadge(){const n=Object.values(cart).reduce((a,c)=>a+c.qty,0);const el=document.getElementById('cbadge');el.style.display=n>0?'flex':'none';el.textContent=n;}
+function renderCart(){
+  const body=document.getElementById('cartBody'),items=Object.values(cart).filter(i=>i.qty>0),btn=document.getElementById('ordBtn');
+  if(!items.length){body.innerHTML='<div class="cmt">📋 カートは空です</div>';document.getElementById('cartAmt').textContent='¥0';btn.disabled=true;return;}
+  btn.disabled=false;let grand=0;body.innerHTML='';
+  items.forEach(item=>{
+    grand+=item.price*item.qty;const r=document.createElement('div');r.className='ci2';
+    r.innerHTML=`<div class="ci2-e">${item.emoji}</div><div class="ci2-i"><div class="ci2-n">${item.name}</div><div class="ci2-p">¥${item.price.toLocaleString()} × ${item.qty} = ¥${(item.price*item.qty).toLocaleString()}</div></div><div class="qty"><button class="qb" onclick="chQty('${item.id}',-1)">−</button><span class="qn">${item.qty}</span><button class="qb" onclick="chQty('${item.id}',1)">＋</button></div>`;
+    body.appendChild(r);
+  });
+  document.getElementById('cartAmt').textContent='¥'+grand.toLocaleString();
+}
+function openCart(){document.getElementById('cartOv').classList.add('on');renderCart();}
+function closeCart(){document.getElementById('cartOv').classList.remove('on');}
+function bgClick(e){if(e.target===document.getElementById('cartOv'))closeCart();}
+
+// ── ORDER SEND ──
+async function doOrder(){
+  const items=Object.values(cart).filter(i=>i.qty>0);if(!items.length)return;
+  if(!dc||dc.readyState!=='open'){alert('キッチンと接続されていません。再接続してください。');return;}
+  const btn=document.getElementById('ordBtn');btn.disabled=true;btn.classList.add('ld');
+  const oid='SUS-'+Date.now().toString(36).toUpperCase().slice(-8);
+  const order={id:oid,tableNum:document.getElementById('tblLbl').textContent.replace('テーブル ',''),items:items.map(i=>({id:i.id,name:i.name,emoji:i.emoji,price:i.price,qty:i.qty})),total:items.reduce((a,c)=>a+c.price*c.qty,0),note:document.getElementById('noteArea').value.trim()};
+  try{
+    dc.send(JSON.stringify({type:'order',order}));
+    cart={};updateBadge();closeCart();
+    document.getElementById('noteArea').value='';
+    document.getElementById('succId').textContent='注文番号: '+oid;
+    document.getElementById('succOv').classList.add('on');
+  }catch(e){alert('送信エラー: '+e.message);}
+  finally{btn.disabled=false;btn.classList.remove('ld');}
+}
+function closeSucc(){document.getElementById('succOv').classList.remove('on');}
+
+// TOAST
+let tt;
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('on'),1800);}
+</script>
+</body>
+</html>

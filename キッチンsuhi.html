@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キッチン | スシロー 綾川ALUTO北館5F</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#0a0f14;--surface:#111820;--card:#182030;--card2:#1e2a3a;
+  --border:#1e3048;--border2:#2a4060;
+  --red:#e63946;--gold:#ffc300;--green:#2dc653;--blue:#4a9eff;
+  --text:#e8f4fd;--muted:#5a8aaa;--muted2:#7aaabb;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;}
+
+/* SETUP */
+.setup{max-width:520px;margin:0 auto;padding:24px 16px 60px;display:flex;flex-direction:column;gap:14px;}
+.panel{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;}
+h1{font-size:18px;font-weight:900;}
+.guide{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:13px;line-height:1.9;color:var(--muted2);}
+.guide strong{color:var(--text);}
+.banner{font-size:12px;padding:9px 12px;border-radius:6px;border-left:3px solid var(--red);background:rgba(230,57,70,.1);}
+.banner.info{border-left-color:var(--green);background:rgba(45,198,83,.08);}
+.btn{font-family:inherit;font-size:14px;padding:10px 18px;border-radius:7px;border:1px solid var(--border2);background:var(--card2);color:var(--text);cursor:pointer;transition:all .18s;width:100%;}
+.btn:hover{border-color:var(--blue);}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:700;}
+.btn.primary:hover{background:#c0303a;}
+.btn.ghost{background:transparent;width:auto;}
+textarea{width:100%;background:var(--card);border:1px solid var(--border2);color:var(--text);font-family:monospace;font-size:12px;padding:10px;border-radius:6px;resize:vertical;height:64px;}
+.qr-box{background:#fff;border-radius:8px;padding:12px;display:flex;justify-content:center;}
+.qr-box svg{width:100%;max-width:280px;height:auto;display:block;}
+.row{display:flex;gap:8px;align-items:flex-start;}
+[hidden]{display:none!important;}
+
+/* KITCHEN MAIN */
+.kitchen{display:none;}
+.kh{
+  position:sticky;top:0;z-index:50;
+  background:var(--surface);border-bottom:2px solid var(--red);
+  padding:12px 20px;display:flex;align-items:center;gap:12px;
+}
+.kh-title{font-size:16px;font-weight:900;flex:1;}
+.kh-title small{display:block;font-size:10px;color:var(--muted);font-weight:400;}
+.conn-badge{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:14px;font-size:11px;font-weight:700;}
+.conn-badge.on{background:rgba(45,198,83,.12);border:1px solid var(--green);color:var(--green);}
+.conn-badge.off{background:rgba(230,57,70,.1);border:1px solid var(--red);color:var(--red);}
+.cdot{width:7px;height:7px;border-radius:50%;animation:blink 1.8s ease infinite;}
+.conn-badge.on .cdot{background:var(--green);box-shadow:0 0 8px var(--green);}
+.conn-badge.off .cdot{background:var(--red);animation:none;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.add-tablet-btn{background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-family:inherit;}
+.add-tablet-btn:hover{border-color:var(--gold);}
+
+/* FILTER BAR */
+.fbar{display:flex;gap:8px;padding:12px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;}
+.fbtn{padding:6px 16px;border-radius:16px;border:1.5px solid var(--border2);background:var(--card);color:var(--muted2);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
+.fbtn.f-all.on{background:var(--text);color:var(--bg);border-color:var(--text);}
+.fbtn.f-pending.on{background:var(--red);color:#fff;border-color:var(--red);}
+.fbtn.f-cooking.on{background:var(--gold);color:#000;border-color:var(--gold);}
+.fbtn.f-done.on{background:var(--green);color:#000;border-color:var(--green);}
+.fsp{flex:1;}
+.tbtn{background:transparent;border:1px solid var(--border2);color:var(--muted);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;transition:all .15s;}
+.tbtn:hover{border-color:var(--red);color:var(--red);}
+
+/* STATS */
+.stats{display:flex;gap:10px;padding:12px 20px;flex-wrap:wrap;}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 16px;text-align:center;min-width:68px;}
+.stat-n{font-size:24px;font-weight:900;line-height:1;}
+.stat-n.pnd{color:var(--red);}
+.stat-n.ckn{color:var(--gold);}
+.stat-n.dn{color:var(--green);}
+.stat-n.all{color:var(--text);}
+.stat-l{font-size:10px;color:var(--muted);margin-top:2px;}
+.stat.blink-border{border-color:var(--red);animation:bb 1s ease infinite alternate;}
+@keyframes bb{from{box-shadow:none}to{box-shadow:0 0 12px rgba(230,57,70,.4)}}
+
+/* ORDERS */
+.orders{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:0 20px 28px;}
+.empty{grid-column:1/-1;text-align:center;padding:50px;color:var(--muted);font-size:15px;}
+
+.oc{background:var(--card);border-radius:12px;border:1.5px solid var(--border2);display:flex;flex-direction:column;animation:ci .3s ease;}
+@keyframes ci{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.oc.pnd{border-color:var(--red);box-shadow:0 0 18px rgba(230,57,70,.15);}
+.oc.ckn{border-color:var(--gold);box-shadow:0 0 14px rgba(255,195,0,.1);}
+.oc.dn{opacity:.55;}
+.oc.ccl{opacity:.3;}
+
+.oc-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px;}
+.oc-head.pnd{background:rgba(230,57,70,.07);}
+.oc-head.ckn{background:rgba(255,195,0,.06);}
+.oc-head.dn{background:rgba(45,198,83,.05);}
+.oc-meta{flex:1;}
+.oc-id{font-size:12px;font-weight:700;color:var(--gold);}
+.oc-info{font-size:11px;color:var(--muted);margin-top:1px;}
+.elapsed{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.06);color:var(--muted2);white-space:nowrap;}
+.elapsed.w{background:rgba(255,195,0,.15);color:var(--gold);}
+.elapsed.o{background:rgba(230,57,70,.2);color:var(--red);animation:flash .8s infinite alternate;}
+@keyframes flash{from{opacity:1}to{opacity:.3}}
+.spill{padding:3px 8px;border-radius:7px;font-size:10px;font-weight:700;}
+.spill.pnd{background:var(--red);color:#fff;}
+.spill.ckn{background:var(--gold);color:#000;}
+.spill.dn{background:var(--green);color:#000;}
+.spill.ccl{background:#555;color:#fff;}
+
+.oc-items{padding:9px 14px;flex:1;}
+.oc-item{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.oc-item:last-child{border-bottom:none;}
+.oci-e{font-size:17px;width:22px;}
+.oci-n{flex:1;font-size:12px;}
+.oci-q{font-size:11px;font-weight:700;background:rgba(255,195,0,.1);color:var(--gold);padding:2px 7px;border-radius:5px;}
+.oc-note{margin:5px 0 0;padding:7px;background:rgba(255,255,255,.04);border-radius:6px;font-size:11px;color:var(--muted);border-left:2px solid var(--border2);}
+.oc-foot{padding:8px 14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.oc-total{font-size:14px;font-weight:900;color:var(--gold);}
+.oc-cnt{font-size:11px;color:var(--muted);}
+.oc-actions{display:flex;gap:6px;padding:0 12px 12px;}
+.ab{flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .14s;}
+.ab:active{transform:scale(.94);}
+.ab.start{background:var(--gold);color:#000;}
+.ab.done{background:var(--green);color:#000;}
+.ab.back{background:rgba(255,107,26,.12);color:#ff6b1a;border:1px solid rgba(255,107,26,.3);}
+.ab.cancel{background:rgba(230,57,70,.1);color:var(--red);border:1px solid rgba(230,57,70,.25);}
+.ab.del{background:rgba(255,255,255,.06);color:var(--muted);}
+
+/* NOTIF */
+.notif{
+  position:fixed;top:14px;right:14px;
+  background:var(--red);color:#fff;
+  padding:12px 18px;border-radius:10px;font-size:14px;font-weight:700;
+  z-index:300;transform:translateX(130%);transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 6px 20px rgba(230,57,70,.4);max-width:260px;
+}
+.notif.on{transform:translateX(0);}
+.notif-sub{font-size:11px;opacity:.85;margin-top:2px;font-weight:400;}
+
+/* ADD TABLET MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:12px;}
+.modal h2{font-size:16px;font-weight:900;}
+
+@media(max-width:540px){.orders{grid-template-columns:1fr;padding:0 12px 24px;}.stats{padding:10px 12px;}.fbar{padding:10px 12px;}.kh{padding:10px 14px;}}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div class="setup" id="setup">
+  <div class="panel">
+    <h1>🍣 キッチン画面 — 接続設定</h1>
+    <div class="guide">
+      <strong>① 「接続コードを作る」を押す</strong><br>
+      <strong>② 出てきたQRコードをタブレットで読み取ってもらう</strong><br>
+      <strong>③ タブレットに表示された返事コードをここに貼り付けて「接続」</strong><br>
+      <span style="color:var(--muted)">これだけで完了！サーバー不要・登録不要</span>
+    </div>
+    <div id="setupBanner" class="banner" hidden></div>
+    <div id="s1"><button class="btn primary" id="btnCreate">📡 接続コードを作る</button></div>
+    <div id="s2" hidden>
+      <div class="qr-box" id="offerQr"></div>
+      <button id="btnSaveOffer" class="btn ghost" style="margin-top:8px;width:auto;">💾 コードをファイルで保存</button>
+      <details style="font-size:12px;color:var(--muted);margin-top:8px;">
+        <summary style="cursor:pointer;padding:4px 0;">テキストでコピーする場合</summary>
+        <div class="row" style="margin-top:6px;">
+          <textarea id="offerTxt" readonly></textarea>
+          <button class="btn ghost" id="btnCopyOffer">コピー</button>
+        </div>
+      </details>
+    </div>
+    <div id="s3" hidden>
+      <p style="font-size:13px;color:var(--muted2);">タブレットからの返事コードを貼り付けてください</p>
+      <label class="btn ghost" style="width:auto;display:inline-block;cursor:pointer;">
+        📁 ファイルで読み込む
+        <input type="file" id="loadAnswer" accept=".txt,*/*" hidden>
+      </label>
+      <textarea id="answerTxt" placeholder="返事コードを貼り付け" style="margin-top:8px;"></textarea>
+      <button class="btn primary" id="btnConnect" style="margin-top:8px;">🔗 接続する</button>
+    </div>
+  </div>
+</div>
+
+<!-- KITCHEN MAIN -->
+<div class="kitchen" id="kitchen">
+  <div class="kh">
+    <div class="kh-title">🍣 スシロー キッチン<small>綾川ALUTO北館5Fフードリバー店</small></div>
+    <div class="conn-badge on" id="connBadge"><div class="cdot"></div><span id="connLbl">接続中</span></div>
+    <button class="add-tablet-btn" id="btnAddTablet">＋ タブレット追加</button>
+  </div>
+
+  <div class="fbar">
+    <button class="fbtn f-all on" onclick="setFilter('all')">📋 すべて</button>
+    <button class="fbtn f-pending" onclick="setFilter('pending')">🔴 未着手</button>
+    <button class="fbtn f-cooking" onclick="setFilter('cooking')">⏳ 調理中</button>
+    <button class="fbtn f-done" onclick="setFilter('done')">✅ 完了</button>
+    <div class="fsp"></div>
+    <button class="tbtn" onclick="clearDone()">🗑 完了を削除</button>
+    <button class="tbtn" onclick="clearAll()" style="color:var(--red)">⚠ 全削除</button>
+  </div>
+
+  <div class="stats" id="statsRow"></div>
+  <div class="orders" id="ordersGrid"></div>
+</div>
+
+<!-- NOTIF -->
+<div class="notif" id="notif">
+  <div id="notifMsg">🔔 新しい注文が届きました！</div>
+  <div class="notif-sub" id="notifSub"></div>
+</div>
+
+<!-- ADD TABLET MODAL -->
+<div class="modal-bg" id="addModal" style="display:none;">
+  <div class="modal">
+    <h2>📡 タブレット追加</h2>
+    <p style="font-size:13px;color:var(--muted2);">新しいタブレットを接続します。QRコードを読み取らせてください。</p>
+    <div id="addBanner" class="banner" hidden></div>
+    <div id="addQrBox" class="qr-box" style="display:none;"></div>
+    <button class="btn primary" id="btnNewOffer">📡 新しい接続コードを作る</button>
+    <textarea id="addAnswerTxt" placeholder="タブレットからの返事コードを貼り付け" style="display:none;"></textarea>
+    <button class="btn" id="btnAddConnect" style="display:none;">🔗 接続する</button>
+    <button class="btn ghost" onclick="closeAddModal()" style="width:auto;">閉じる</button>
+  </div>
+</div>
+
+<script>
+// ── WebRTC utilities ──
+const STUN = [{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}];
+
+function waitIce(pc){
+  return new Promise(res=>{
+    if(pc.iceGatheringState==='complete'){res();return;}
+    const h=()=>{if(pc.iceGatheringState==='complete'){pc.removeEventListener('icegatheringstatechange',h);res();}};
+    pc.addEventListener('icegatheringstatechange',h);
+    setTimeout(res,6000);
+  });
+}
+
+const B45='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+const B45M=Object.fromEntries([...B45].map((c,i)=>[c,i]));
+function b45enc(u){let o='';for(let i=0;i<u.length;i+=2){if(i+1<u.length){const n=u[i]*256+u[i+1];o+=B45[n%45]+B45[Math.floor(n/45)%45]+B45[Math.floor(n/1755)];}else{const n=u[i];o+=B45[n%45]+B45[Math.floor(n/45)];}}return o;}
+function b45dec(s){const b=[];for(let i=0;i<s.length;i+=3){if(s.length-i>=3){const n=B45M[s[i]]+B45M[s[i+1]]*45+B45M[s[i+2]]*2025;b.push(n>>8,n&255);}else if(s.length-i===2){b.push(B45M[s[i]]+B45M[s[i+1]]*45);}}return new Uint8Array(b);}
+
+async function encDesc(desc){
+  const j=JSON.stringify({type:desc.type,sdp:desc.sdp});
+  if(window.CompressionStream){try{const s=new Blob([j]).stream().pipeThrough(new CompressionStream('gzip'));const b=await new Response(s).arrayBuffer();return'GZ:'+b45enc(new Uint8Array(b));}catch{}}
+  return'RAW:'+b45enc(new TextEncoder().encode(j));
+}
+async function decDesc(c){
+  c=c.trim();
+  if(c.startsWith('GZ:')){const b=b45dec(c.slice(3));const s=new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(s).text());}
+  if(c.startsWith('RAW:')){return JSON.parse(new TextDecoder().decode(b45dec(c.slice(4))));}
+  throw new Error('コード形式が不正です');
+}
+
+function makeQR(el,text){
+  el.innerHTML='';
+  try{const q=qrcode(0,'L');q.addData(text,'Alphanumeric');q.make();el.innerHTML=q.createSvgTag({cellSize:4,margin:2,scalable:true});}
+  catch{el.innerHTML='<p style="font-size:11px;color:#888;">コードが長すぎます。テキストでコピーしてください。</p>';}
+}
+function dlFile(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.download=name;a.click();}
+function banner(el,msg,type='err'){el.textContent=msg;el.className='banner'+(type==='info'?' info':'');el.hidden=false;}
+
+// ── Connection management ──
+let pcs=[];  // array of {pc, dc, tabletId}
+let orders=[];
+let filter='all';
+
+function mkTabletId(){return 'T'+(pcs.length+1);}
+
+async function createOffer(offerQrEl, offerTxtEl, answerTxtEl, connectCallback){
+  const pc=new RTCPeerConnection({iceServers:STUN});
+  const tid=mkTabletId();
+  const dc=pc.createDataChannel('order');
+
+  dc.onopen=()=>{
+    pcs.push({pc,dc,tabletId:tid});
+    updateConnBadge();
+    connectCallback(tid);
+  };
+  dc.onmessage=(e)=>{
+    try{
+      const msg=JSON.parse(e.data);
+      if(msg.type==='order') receiveOrder(msg.order, tid);
+    }catch{}
+  };
+  dc.onclose=()=>{
+    pcs=pcs.filter(p=>p.dc!==dc);
+    updateConnBadge();
+  };
+
+  const offer=await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await waitIce(pc);
+  const code=await encDesc(pc.localDescription);
+  if(offerTxtEl) offerTxtEl.value=code;
+  if(offerQrEl) makeQR(offerQrEl, code);
+
+  return {pc, code, tid};
+}
+
+// ── SETUP ──
+let setupPc=null;
+
+document.getElementById('btnCreate').addEventListener('click', async()=>{
+  try{
+    const offerQrEl=document.getElementById('offerQr');
+    const offerTxtEl=document.getElementById('offerTxt');
+    const {pc}=await createOffer(offerQrEl, offerTxtEl, null, (tid)=>{
+      document.getElementById('setup').style.display='none';
+      document.getElementById('kitchen').style.display='block';
+    });
+    setupPc=pc;
+    document.getElementById('s1').hidden=true;
+    document.getElementById('s2').hidden=false;
+    document.getElementById('s3').hidden=false;
+  }catch(e){banner(document.getElementById('setupBanner'),'エラー: '+e.message);}
+});
+
+document.getElementById('btnConnect').addEventListener('click', async()=>{
+  const code=document.getElementById('answerTxt').value.trim();
+  if(!code){banner(document.getElementById('setupBanner'),'返事コードを貼り付けてください');return;}
+  try{
+    await setupPc.setRemoteDescription(await decDesc(code));
+    banner(document.getElementById('setupBanner'),'接続中です…少しお待ちください','info');
+  }catch(e){banner(document.getElementById('setupBanner'),'接続エラー: '+e.message);}
+});
+
+document.getElementById('btnCopyOffer').addEventListener('click',async(e)=>{
+  const v=document.getElementById('offerTxt').value;
+  try{await navigator.clipboard.writeText(v);e.target.textContent='コピー済';setTimeout(()=>e.target.textContent='コピー',1500);}
+  catch{alert('手動でコピーしてください');}
+});
+document.getElementById('btnSaveOffer').addEventListener('click',()=>{
+  const v=document.getElementById('offerTxt').value;if(v)dlFile('kitchen-invite.txt',v);
+});
+document.getElementById('loadAnswer').addEventListener('change',(e)=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{document.getElementById('answerTxt').value=r.result.trim();};
+  r.readAsText(f);e.target.value='';
+});
+
+// ── ADD TABLET MODAL ──
+let addPc=null;
+document.getElementById('btnAddTablet').addEventListener('click',()=>{
+  document.getElementById('addModal').style.display='flex';
+  document.getElementById('addQrBox').style.display='none';
+  document.getElementById('addAnswerTxt').style.display='none';
+  document.getElementById('btnAddConnect').style.display='none';
+  document.getElementById('addBanner').hidden=true;
+});
+function closeAddModal(){document.getElementById('addModal').style.display='none';}
+
+document.getElementById('btnNewOffer').addEventListener('click',async()=>{
+  try{
+    const qBox=document.getElementById('addQrBox');
+    qBox.style.display='flex';
+    const{pc}=await createOffer(qBox, null, null, (tid)=>{
+      closeAddModal();
+      showNotif('📡 '+tid+' が接続されました！','タブレットとの接続が確立しました');
+    });
+    addPc=pc;
+    document.getElementById('addAnswerTxt').style.display='block';
+    document.getElementById('btnAddConnect').style.display='block';
+  }catch(e){banner(document.getElementById('addBanner'),'エラー: '+e.message);}
+});
+document.getElementById('btnAddConnect').addEventListener('click',async()=>{
+  const code=document.getElementById('addAnswerTxt').value.trim();
+  if(!code){banner(document.getElementById('addBanner'),'返事コードを貼り付けてください');return;}
+  try{
+    await addPc.setRemoteDescription(await decDesc(code));
+    banner(document.getElementById('addBanner'),'接続中…','info');
+  }catch(e){banner(document.getElementById('addBanner'),'エラー: '+e.message);}
+});
+
+function updateConnBadge(){
+  const n=pcs.filter(p=>p.dc.readyState==='open').length;
+  const b=document.getElementById('connBadge');
+  const l=document.getElementById('connLbl');
+  b.className='conn-badge '+(n>0?'on':'off');
+  l.textContent=n>0?`タブレット ${n}台接続中`:'切断';
+}
+
+// ── Orders ──
+function receiveOrder(order, tabletId){
+  order.tabletId=tabletId;
+  order.status='pending';
+  order.createdAt=Date.now();
+  orders.unshift(order);
+  renderAll();
+  showNotif('🍣 新しい注文！',`${tabletId} / テーブル${order.tableNum} / ${order.items.length}品`);
+}
+
+function setStatus(id,status){
+  const o=orders.find(o=>o.id===id);if(o)o.status=status;renderAll();
+}
+function removeOrder(id){orders=orders.filter(o=>o.id!==id);renderAll();}
+function clearDone(){if(!confirm('完了済みを全削除しますか？'))return;orders=orders.filter(o=>o.status!=='done');renderAll();}
+function clearAll(){if(!confirm('全注文を削除しますか？'))return;orders=[];renderAll();}
+window.setStatus=setStatus;window.removeOrder=removeOrder;window.clearDone=clearDone;window.clearAll=clearAll;
+
+function setFilter(f){
+  filter=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  document.querySelector('.fbtn.f-'+f)?.classList.add('on');
+  renderAll();
+}
+
+function elapsed(ms){
+  const s=Math.floor((Date.now()-ms)/1000);
+  if(s<60)return s+'秒';
+  if(s<3600)return Math.floor(s/60)+'分'+s%60+'秒';
+  return Math.floor(s/3600)+'時間'+Math.floor((s%3600)/60)+'分';
+}
+function elapsedClass(ms,status){
+  if(status==='done'||status==='cancelled')return'';
+  const m=(Date.now()-ms)/60000;
+  return m>15?'o':m>8?'w':'';
+}
+
+function renderAll(){
+  const filtered=filter==='all'?orders:orders.filter(o=>o.status===filter);
+  const pnd=orders.filter(o=>o.status==='pending').length;
+  const ckn=orders.filter(o=>o.status==='cooking').length;
+  const dn=orders.filter(o=>o.status==='done').length;
+
+  document.getElementById('statsRow').innerHTML=`
+    <div class="stat"><div class="stat-n all">${orders.length}</div><div class="stat-l">総注文数</div></div>
+    <div class="stat ${pnd>0?'blink-border':''}"><div class="stat-n pnd">${pnd}</div><div class="stat-l">🔴 未着手</div></div>
+    <div class="stat"><div class="stat-n ckn">${ckn}</div><div class="stat-l">⏳ 調理中</div></div>
+    <div class="stat"><div class="stat-n dn">${dn}</div><div class="stat-l">✅ 完了</div></div>
+  `;
+
+  const grid=document.getElementById('ordersGrid');
+  if(!filtered.length){grid.innerHTML='<div class="empty">📋 表示する注文はありません</div>';return;}
+
+  const LABELS={pending:'🔴 未着手',cooking:'⏳調理中',done:'✅ 完了',cancelled:'❌ キャンセル'};
+  grid.innerHTML='';
+  filtered.forEach(o=>{
+    const et=elapsed(o.createdAt);
+    const ec=elapsedClass(o.createdAt,o.status);
+    const tstr=new Date(o.createdAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const card=document.createElement('div');
+    card.className=`oc ${o.status==='pending'?'pnd':o.status==='cooking'?'ckn':o.status==='done'?'dn':'ccl'}`;
+    card.innerHTML=`
+      <div class="oc-head ${o.status==='pending'?'pnd':o.status==='cooking'?'ckn':o.status==='done'?'dn':''}">
+        <div class="oc-meta">
+          <div class="oc-id">${o.id}</div>
+          <div class="oc-info">${o.tabletId} | テーブル${o.tableNum} | ${tstr}</div>
+        </div>
+        ${et?`<span class="elapsed ${ec}">${et}</span>`:''}
+        <span class="spill ${o.status==='pending'?'pnd':o.status==='cooking'?'ckn':o.status==='done'?'dn':'ccl'}">${LABELS[o.status]||o.status}</span>
+      </div>
+      <div class="oc-items">
+        ${o.items.map(i=>`<div class="oc-item"><span class="oci-e">${i.emoji||'🍽'}</span><span class="oci-n">${i.name}</span><span class="oci-q">×${i.qty}</span></div>`).join('')}
+        ${o.note?`<div class="oc-note">📝 ${o.note}</div>`:''}
+      </div>
+      <div class="oc-foot">
+        <span class="oc-cnt">${o.items.reduce((a,c)=>a+c.qty,0)}品</span>
+        <span class="oc-total">¥${o.total.toLocaleString()}</span>
+      </div>
+      <div class="oc-actions">
+        ${o.status==='pending'?`<button class="ab start" onclick="setStatus('${o.id}','cooking')">🍳 調理開始</button>`:''}
+        ${o.status==='cooking'?`<button class="ab done" onclick="setStatus('${o.id}','done')">✅ 提供完了</button>`:''}
+        ${o.status==='done'?`<button class="ab back" onclick="setStatus('${o.id}','cooking')">↩ 戻す</button>`:''}
+        ${o.status!=='cancelled'?`<button class="ab cancel" onclick="setStatus('${o.id}','cancelled')">❌</button>`:''}
+        <button class="ab del" onclick="removeOrder('${o.id}')">🗑</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// auto refresh elapsed every 30s
+setInterval(renderAll, 30000);
+
+// NOTIF
+let ntTimer;
+function showNotif(msg,sub){
+  document.getElementById('notifMsg').textContent=msg;
+  document.getElementById('notifSub').textContent=sub||'';
+  const el=document.getElementById('notif');el.classList.add('on');
+  clearTimeout(ntTimer);ntTimer=setTimeout(()=>el.classList.remove('on'),4500);
+}
+</script>
+</body>
+</html>
