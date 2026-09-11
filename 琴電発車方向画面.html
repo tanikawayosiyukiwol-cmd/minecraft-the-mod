@@ -2836,7 +2836,7 @@ function applyDisplay(msg) {
       return;
     }
     const color = LINE_COLORS[msg.line] || '#555';
-    const romaji = msg.destinationRomaji || STATION_ROMAJI[msg.destination] || '';
+    const romaji = msg.destinationRomaji || (msg.stationRomaji && msg.stationRomaji[msg.destination]) || STATION_ROMAJI[msg.destination] || '';
     const kanjiText = (msg.kind && msg.kind !== '普通' ? msg.kind + '　' : '') + (msg.destination || '');
     view.innerHTML =
       '<div class="sign-led">' +
@@ -2855,6 +2855,8 @@ function applyDisplay(msg) {
 // ---- ロール式：操作盤の駅リストと同じ並びで、何駅も通り過ぎてからたどり着く ----
 let rollCurrentIndex = -1;
 let rollGeneration = 0;
+let rollAnimating = false;
+let rollLastFrameContent = null; // 直前に確定していた（するはずだった）コマの中身
 const PER_FRAME_MS = 420; // 1コマ（間 or 行き先）あたりの表示時間。これで速度を調整できます
 
 // 準急は赤バッジ確認済み。それ以外の種別バッジは未確認のため仮の黒バッジにしています
@@ -2904,6 +2906,15 @@ function frameHtml(content) {
   return '<div class="roll-frame">' + content.kindHtml + '<span class="dest">' + escapeHtml(content.text) + '</span></div>';
 }
 
+// トラックを、指定した1コマだけの状態に強制確定させる（アニメーション途中でも安全に呼べる）
+function commitFrame(track, content) {
+  track.style.transition = 'none';
+  track.innerHTML = frameHtml(content);
+  track.style.transform = 'translateY(0)';
+  rollLastFrameContent = content;
+  fitText(track.querySelector('.dest'));
+}
+
 function playRollAnimation(msg, isSpecial) {
   rollGeneration++;
   const gen = rollGeneration;
@@ -2922,12 +2933,16 @@ function playRollAnimation(msg, isSpecial) {
   }
   const track = document.getElementById('rollTrack');
 
+  // 前の指示のアニメーションがまだ途中だったら、まずそれを確定させてから次へ進む
+  // （これをしないと、track.innerHTMLが複数コマ入った不完全な状態のまま次のアニメーションが始まり、表示が壊れる）
+  if (rollAnimating && rollLastFrameContent) {
+    commitFrame(track, rollLastFrameContent);
+    rollAnimating = false;
+  }
+
   // 初回（現在地が分からない）はそのまま表示するだけで、通過演出はしない
   if (rollCurrentIndex === -1) {
-    track.style.transition = 'none';
-    track.style.transform = 'translateY(0)';
-    track.innerHTML = frameHtml(rollFrameContent(seq, virtualNewIdx, true, msg));
-    fitText(track.querySelector('.dest'));
+    commitFrame(track, rollFrameContent(seq, virtualNewIdx, true, msg));
     rollCurrentIndex = isCustom ? -1 : newIdx;
     return;
   }
@@ -2952,9 +2967,10 @@ function playRollAnimation(msg, isSpecial) {
     stepIdxs.push({ idx, isFinal });
   }
 
-  const currentFrameHtml = track.innerHTML; // 今表示されている1コマぶん
+  const currentFrameHtml = track.innerHTML; // 今表示されている1コマぶん（上のガードのおかげで必ず単一コマ）
   const framesToMove = hops * 2; // 「間」と「行き先」のペアがhops回ぶん
   const duration = framesToMove * PER_FRAME_MS;
+  const finalContent = rollFrameContent(seq, virtualNewIdx, true, msg);
 
   track.style.transition = 'none';
   if (direction === 'up') {
@@ -2967,10 +2983,13 @@ function playRollAnimation(msg, isSpecial) {
     track.innerHTML = html;
     track.style.transform = 'translateY(0)';
     void track.offsetHeight;
+    rollAnimating = true;
     requestAnimationFrame(() => {
-      if (gen !== rollGeneration) return;
-      track.style.transition = 'transform ' + duration + 'ms linear';
-      track.style.transform = 'translateY(-' + (framesToMove * 100) + '%)';
+      requestAnimationFrame(() => {
+        if (gen !== rollGeneration) return;
+        track.style.transition = 'transform ' + duration + 'ms linear';
+        track.style.transform = 'translateY(-' + (framesToMove * 100) + '%)';
+      });
     });
   } else {
     // 通過駅を遠い順（目的地が一番上）に積み、現在のコマを一番下に置く → 下へスクロールして見せる
@@ -2983,21 +3002,20 @@ function playRollAnimation(msg, isSpecial) {
     track.innerHTML = html;
     track.style.transform = 'translateY(-' + (framesToMove * 100) + '%)';
     void track.offsetHeight;
+    rollAnimating = true;
     requestAnimationFrame(() => {
-      if (gen !== rollGeneration) return;
-      track.style.transition = 'transform ' + duration + 'ms linear';
-      track.style.transform = 'translateY(0)';
+      requestAnimationFrame(() => {
+        if (gen !== rollGeneration) return;
+        track.style.transition = 'transform ' + duration + 'ms linear';
+        track.style.transform = 'translateY(0)';
+      });
     });
   }
 
   setTimeout(() => {
+    rollAnimating = false;
     if (gen !== rollGeneration) return;
-    // 最後のコマだけ残して位置をリセットする（DOMが際限なく増えないように）
-    const finalContent = rollFrameContent(seq, virtualNewIdx, true, msg);
-    track.style.transition = 'none';
-    track.innerHTML = frameHtml(finalContent);
-    track.style.transform = 'translateY(0)';
-    fitText(track.querySelector('.dest'));
+    commitFrame(track, finalContent);
   }, duration + 30);
 
   rollCurrentIndex = isCustom ? -1 : newIdx;

@@ -147,7 +147,7 @@
 
     <details class="panel">
       <summary style="cursor:pointer;">駅リストを編集</summary>
-      <div class="field-label" style="margin-top:8px;">路線を選んで編集（1行に1駅）</div>
+      <div class="field-label" style="margin-top:8px;">路線を選んで編集（1行に1駅。ローマ字は「駅名,Romaji」のように書くと表示側にも反映されます）</div>
       <select id="editRouteSelect"></select>
       <textarea id="stationEditArea" style="height:110px; font-family:inherit; font-size:13px;"></textarea>
       <button id="saveStations" class="btn btn--ghost" style="margin-top:8px;">保存</button>
@@ -12623,6 +12623,15 @@ const STUN_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 let pc = null;
 let appMode = 'houkoumaku';
 
+// 文字入力のたびに毎回送信すると表示側のアニメーションが乱れるので、入力が少し止まってから送る
+function debounce(fn, wait) {
+  let t;
+  return function (...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
 document.getElementById('chooseHoukoumaku').addEventListener('click', () => {
   appMode = 'houkoumaku';
   document.getElementById('homeScreen').style.display = 'none';
@@ -12912,6 +12921,17 @@ let lines = loadLines();
 let currentRoute = Object.keys(lines)[0];
 let currentStyle = 'roll';
 
+// 駅名ごとのローマ字（駅リストを編集の欄で「駅名,ローマ字」の形式で登録できます）
+function loadStationRomaji() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('op_station_romaji'));
+    if (saved && typeof saved === 'object') return saved;
+  } catch (e) {}
+  return {};
+}
+function saveStationRomaji(obj) { localStorage.setItem('op_station_romaji', JSON.stringify(obj)); }
+let stationRomaji = loadStationRomaji();
+
 function renderRouteSwitch() {
   const el = document.getElementById('routeSwitch');
   el.innerHTML = '';
@@ -12950,14 +12970,24 @@ function renderEditRouteSelect() {
 }
 function loadStationEditArea() {
   const route = document.getElementById('editRouteSelect').value;
-  document.getElementById('stationEditArea').value = (lines[route] || []).join('\n');
+  const lines2 = (lines[route] || []).map(st => stationRomaji[st] ? (st + ',' + stationRomaji[st]) : st);
+  document.getElementById('stationEditArea').value = lines2.join('\n');
 }
 document.getElementById('editRouteSelect').addEventListener('change', loadStationEditArea);
 document.getElementById('saveStations').addEventListener('click', () => {
   const route = document.getElementById('editRouteSelect').value;
-  const list = document.getElementById('stationEditArea').value.split('\n').map(s => s.trim()).filter(Boolean);
-  lines[route] = list;
+  const rawLines = document.getElementById('stationEditArea').value.split('\n').map(s => s.trim()).filter(Boolean);
+  const names = [];
+  rawLines.forEach(line => {
+    const [name, romaji] = line.split(',').map(s => (s || '').trim());
+    if (!name) return;
+    names.push(name);
+    if (romaji) stationRomaji[name] = romaji;
+    else delete stationRomaji[name];
+  });
+  lines[route] = names;
   saveLines(lines);
+  saveStationRomaji(stationRomaji);
   if (route === currentRoute) renderDestSelect();
   sendCurrentState();
 });
@@ -12978,8 +13008,8 @@ document.getElementById('destFreeToggle').addEventListener('change', (e) => {
   document.getElementById('destFreeRomajiInput').hidden = !e.target.checked;
   sendCurrentState();
 });
-document.getElementById('destFreeInput').addEventListener('input', sendCurrentState);
-document.getElementById('destFreeRomajiInput').addEventListener('input', sendCurrentState);
+document.getElementById('destFreeInput').addEventListener('input', debounce(sendCurrentState, 500));
+document.getElementById('destFreeRomajiInput').addEventListener('input', debounce(sendCurrentState, 500));
 
 let powerOn = true;
 let standbyOn = false;
@@ -13017,7 +13047,8 @@ function sendCurrentState() {
     destination: destination,
     destinationRomaji: destinationRomaji,
     kind: document.getElementById('kindSelect').value,
-    lines: lines
+    lines: lines,
+    stationRomaji: stationRomaji
   }));
 }
 
@@ -13055,9 +13086,9 @@ function addHasshaRow(prefill) {
     if (prefill.destination) row.querySelector('.hassha-dest').value = prefill.destination;
     row.querySelector('.hassha-platform').value = prefill.platform || '';
   }
-  row.querySelector('.hassha-time').addEventListener('input', sendHasshaState);
+  row.querySelector('.hassha-time').addEventListener('input', debounce(sendHasshaState, 500));
   row.querySelector('.hassha-dest').addEventListener('change', sendHasshaState);
-  row.querySelector('.hassha-platform').addEventListener('input', sendHasshaState);
+  row.querySelector('.hassha-platform').addEventListener('input', debounce(sendHasshaState, 500));
   row.querySelector('.hassha-remove').addEventListener('click', () => {
     row.remove();
     sendHasshaState();
@@ -13069,7 +13100,7 @@ document.getElementById('hasshaAddRow').addEventListener('click', () => {
   addHasshaRow(null);
   sendHasshaState();
 });
-document.getElementById('hasshaStationName').addEventListener('input', sendHasshaState);
+document.getElementById('hasshaStationName').addEventListener('input', debounce(sendHasshaState, 500));
 
 function sendHasshaState() {
   if (!dc || dc.readyState !== 'open') return;
