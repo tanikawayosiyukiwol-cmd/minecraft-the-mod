@@ -6,6 +6,8 @@
 <title>通信端末</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
 <style>
   :root {
     --bg: #14181c;
@@ -336,6 +338,36 @@
     </div>
     <div class="console__status" id="statusText">回線状態: 未接続</div>
   </header>
+
+  <section class="panel" id="phonebookPanel">
+    <div class="panel__label">📇 電話帳（番号で発信）</div>
+    <div id="pbSetupBanner" class="banner" hidden></div>
+
+    <div id="pbNoAccount">
+      <p class="hint">番号で友だちに発信する機能を使うには、無料のFirebaseプロジェクトが必要です(サーバー役として使います)。</p>
+      <label class="field-label">Firebase設定（自分のプロジェクトの設定を貼り付け）</label>
+      <textarea id="firebaseConfigInput" placeholder='{"apiKey":"...","databaseURL":"...","projectId":"..."}' style="height:80px;"></textarea>
+      <button id="pbSaveConfig" class="btn btn--ghost" style="margin-top:8px;">設定を保存</button>
+      <button id="pbCreateAccount" class="btn btn--primary" style="margin-top:8px;">アカウントを作成</button>
+    </div>
+
+    <div id="pbAccount" hidden>
+      <p class="hint">あなたの番号: <strong id="pbMyNumber"></strong>番</p>
+      <div class="code-row">
+        <input type="text" id="pbFriendNumberInput" placeholder="友だちの番号を入力">
+        <button id="pbAddFriend" class="btn btn--ghost">＋友だち追加</button>
+      </div>
+      <div id="pbFriendList" style="margin-top:10px;"></div>
+    </div>
+
+    <div id="pbIncomingCall" class="banner banner--info" hidden style="flex-direction:column; gap:8px;">
+      <span id="pbIncomingText"></span>
+      <div style="display:flex; gap:8px;">
+        <button id="pbAnswer" class="btn btn--primary">応答</button>
+        <button id="pbDecline" class="btn btn--danger">拒否</button>
+      </div>
+    </div>
+  </section>
 
   <section class="panel">
     <div class="panel__label">通話 / ビデオ通話（複数人対応）</div>
@@ -13655,6 +13687,260 @@ document.getElementById('sendMail').addEventListener('click', () => {
     showBanner(mailBanner, 'まだ誰とも接続されていません。先に上の通話回線を接続してください。');
   }
 });
+
+// =====================================================
+// 電話帳（番号で発信） — Firebaseを信号のやり取りだけに使う
+// 通話・映像・チャットなどは今まで通り2端末間で直接つながります
+// =====================================================
+let fbDb = null;
+let myNumber = null;
+const pbBanner = document.getElementById('pbSetupBanner');
+
+function loadFirebaseConfig() {
+  try { return JSON.parse(localStorage.getItem('pb_firebase_config') || 'null'); } catch (e) { return null; }
+}
+function saveFirebaseConfigToStorage(cfg) { localStorage.setItem('pb_firebase_config', JSON.stringify(cfg)); }
+function loadMyNumber() {
+  const v = localStorage.getItem('pb_my_number');
+  return v ? parseInt(v, 10) : null;
+}
+function saveMyNumberToStorage(n) { localStorage.setItem('pb_my_number', String(n)); }
+function loadFriends() {
+  try { return JSON.parse(localStorage.getItem('pb_friends') || '[]'); } catch (e) { return []; }
+}
+function saveFriendsToStorage(arr) { localStorage.setItem('pb_friends', JSON.stringify(arr)); }
+
+function initFirebaseIfNeeded(config) {
+  if (fbDb) return;
+  try {
+    firebase.initializeApp(config);
+    fbDb = firebase.database();
+  } catch (e) {
+    showBanner(pbBanner, 'Firebaseの初期化に失敗しました。設定の内容をご確認ください（' + e.message + '）。');
+  }
+}
+
+// ページを開いた時点で、保存済みの設定・番号があれば自動的に読み込む
+(function initPhonebookOnLoad() {
+  const cfg = loadFirebaseConfig();
+  if (cfg) {
+    document.getElementById('firebaseConfigInput').value = JSON.stringify(cfg);
+    initFirebaseIfNeeded(cfg);
+  }
+  myNumber = loadMyNumber();
+  renderPhonebook();
+})();
+
+document.getElementById('pbSaveConfig').addEventListener('click', () => {
+  try {
+    const cfg = JSON.parse(document.getElementById('firebaseConfigInput').value);
+    saveFirebaseConfigToStorage(cfg);
+    initFirebaseIfNeeded(cfg);
+    showBanner(pbBanner, '設定を保存しました。', 'info');
+  } catch (e) {
+    showBanner(pbBanner, '設定の読み込みに失敗しました。Firebaseコンソールからコピーした内容そのままを貼り付けてください。');
+  }
+});
+
+document.getElementById('pbCreateAccount').addEventListener('click', async () => {
+  if (!fbDb) return showBanner(pbBanner, '先にFirebase設定を保存してください。');
+  try {
+    const result = await fbDb.ref('counter').transaction(cur => (cur || 0) + 1);
+    const number = result.snapshot.val();
+    myNumber = number;
+    saveMyNumberToStorage(number);
+    hideBanner(pbBanner);
+    renderPhonebook();
+  } catch (e) {
+    showBanner(pbBanner, 'アカウント作成に失敗しました: ' + e.message);
+  }
+});
+
+function renderPhonebook() {
+  document.getElementById('pbNoAccount').hidden = !!myNumber;
+  document.getElementById('pbAccount').hidden = !myNumber;
+  if (myNumber && fbDb) {
+    document.getElementById('pbMyNumber').textContent = String(myNumber);
+    renderFriendList();
+    listenForIncomingCalls();
+  }
+}
+
+document.getElementById('pbAddFriend').addEventListener('click', () => {
+  const input = document.getElementById('pbFriendNumberInput');
+  const n = parseInt(input.value.trim(), 10);
+  if (!n) return;
+  const friends = loadFriends();
+  if (!friends.includes(n)) {
+    friends.push(n);
+    saveFriendsToStorage(friends);
+  }
+  input.value = '';
+  renderFriendList();
+});
+
+function renderFriendList() {
+  const friends = loadFriends();
+  const el = document.getElementById('pbFriendList');
+  if (!friends.length) {
+    el.innerHTML = '<p class="hint hint--small">まだ友だちがいません。番号を入力して追加してください。</p>';
+    return;
+  }
+  el.innerHTML = friends.map(n =>
+    '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-soft);">' +
+    '<span>' + n + '番</span>' +
+    '<button class="btn btn--ghost pb-call-btn" data-number="' + n + '">📞 発信</button>' +
+    '</div>'
+  ).join('');
+  el.querySelectorAll('.pb-call-btn').forEach(btn => {
+    btn.addEventListener('click', () => callFriend(parseInt(btn.dataset.number, 10)));
+  });
+}
+
+// ---- 発信 ----
+let pbAnswerHandler = null;
+let pbAnswerTimeout = null;
+
+async function callFriend(targetNumber) {
+  try {
+    hideBanner(pbBanner);
+    showBanner(pbBanner, '呼び出し中…（' + targetNumber + '番）', 'info');
+    isHost = true;
+    setStatus('connecting');
+    await ensureLocalStream();
+
+    const pc = createHostPeerConnection();
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    restrictCodecs(pc);
+    const dc = pc.createDataChannel('chat');
+    const id = 'p' + (++participantCounter);
+    participants.set(id, { pc, dc });
+    setupHostParticipant(id);
+    pendingHostPc = pc;
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitForIceGathering(pc);
+
+    await fbDb.ref('calls/' + targetNumber).set({
+      from: myNumber,
+      offer: { type: pc.localDescription.type, sdp: pc.localDescription.sdp },
+      ts: Date.now()
+    });
+
+    const answerRef = fbDb.ref('answers/' + myNumber);
+    pbAnswerTimeout = setTimeout(() => {
+      answerRef.off('value', pbAnswerHandler);
+      showBanner(pbBanner, '応答がありませんでした。');
+      fbDb.ref('calls/' + targetNumber).remove();
+    }, 30000);
+
+    pbAnswerHandler = async (snap) => {
+      const val = snap.val();
+      if (!val) return;
+      clearTimeout(pbAnswerTimeout);
+      answerRef.off('value', pbAnswerHandler);
+      await pc.setRemoteDescription(val.answer);
+      hideBanner(pbBanner);
+      answerRef.remove();
+    };
+    answerRef.on('value', pbAnswerHandler);
+  } catch (err) {
+    setStatus('idle');
+    showBanner(pbBanner, '発信に失敗しました: ' + err.message);
+  }
+}
+
+// ---- 着信 ----
+let pbIncomingCall = null;
+
+function listenForIncomingCalls() {
+  fbDb.ref('calls/' + myNumber).on('value', (snap) => {
+    const val = snap.val();
+    if (!val) {
+      document.getElementById('pbIncomingCall').hidden = true;
+      stopRingtone();
+      pbIncomingCall = null;
+      return;
+    }
+    pbIncomingCall = val;
+    document.getElementById('pbIncomingText').textContent = val.from + '番から着信中…';
+    document.getElementById('pbIncomingCall').hidden = false;
+    playRingtone();
+  });
+}
+
+document.getElementById('pbAnswer').addEventListener('click', async () => {
+  const call = pbIncomingCall;
+  if (!call) return;
+  stopRingtone();
+  document.getElementById('pbIncomingCall').hidden = true;
+  try {
+    isHost = false;
+    setStatus('connecting');
+    await ensureLocalStream();
+
+    hostPc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+    localStream.getTracks().forEach(t => hostPc.addTrack(t, localStream));
+    restrictCodecs(hostPc);
+    hostPc.ontrack = (e) => { getOrCreateTile(e.streams[0].id, '参加者').srcObject = e.streams[0]; };
+    hostPc.ondatachannel = (e) => { hostDc = e.channel; setupJoinDataChannel(hostDc); };
+    hostPc.onconnectionstatechange = () => {
+      if (hostPc.connectionState === 'connected') setStatus('connected');
+      if (['disconnected', 'failed', 'closed'].includes(hostPc.connectionState)) {
+        setStatus('idle');
+        clearAllTiles();
+      }
+    };
+
+    await hostPc.setRemoteDescription(call.offer);
+    const answer = await hostPc.createAnswer();
+    await hostPc.setLocalDescription(answer);
+    await waitForIceGathering(hostPc);
+
+    await fbDb.ref('answers/' + call.from).set({
+      from: myNumber,
+      answer: { type: hostPc.localDescription.type, sdp: hostPc.localDescription.sdp },
+      ts: Date.now()
+    });
+    await fbDb.ref('calls/' + myNumber).remove();
+  } catch (err) {
+    setStatus('idle');
+    showBanner(pbBanner, '応答に失敗しました: ' + err.message);
+  }
+});
+
+document.getElementById('pbDecline').addEventListener('click', () => {
+  stopRingtone();
+  document.getElementById('pbIncomingCall').hidden = true;
+  if (myNumber) fbDb.ref('calls/' + myNumber).remove();
+});
+
+// ---- 呼び出し音 ----
+let ringAudioCtx = null;
+let ringInterval = null;
+function playRingtone() {
+  stopRingtone();
+  try {
+    ringAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const beep = () => {
+      const osc = ringAudioCtx.createOscillator();
+      const gain = ringAudioCtx.createGain();
+      osc.frequency.value = 880;
+      osc.connect(gain);
+      gain.connect(ringAudioCtx.destination);
+      gain.gain.setValueAtTime(0.2, ringAudioCtx.currentTime);
+      osc.start();
+      osc.stop(ringAudioCtx.currentTime + 0.4);
+    };
+    beep();
+    ringInterval = setInterval(beep, 1200);
+  } catch (e) { /* 音が出せない環境では無視 */ }
+}
+function stopRingtone() {
+  if (ringInterval) clearInterval(ringInterval);
+  ringInterval = null;
+}
 </script>
 </body>
 </html>

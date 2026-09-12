@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>マイク | 店内アナウンス</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--red:#f85149;--green:#3fb950;--blue:#58a6ff;--gold:#d29922;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;overflow:hidden;}
+.shell{height:100%;display:flex;flex-direction:column;}
+
+/* HEADER */
+.hd{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.hd-title{font-family:'Dela Gothic One',sans-serif;font-size:18px;color:var(--blue);letter-spacing:.08em;flex:1;}
+.conn-pill{display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:16px;font-size:12px;font-weight:700;}
+.conn-pill.on{background:rgba(63,185,80,.12);border:1px solid var(--green);color:var(--green);}
+.conn-pill.off{background:rgba(248,81,73,.1);border:1px solid var(--red);color:var(--red);}
+.cdot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1.8s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.conn-pill.off .cdot{animation:none;}
+.spk-count{font-size:12px;color:var(--muted);}
+
+/* BODY */
+.body{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:0;}
+.section{padding:16px 18px;border-bottom:1px solid var(--border);}
+.section-title{font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px;font-weight:700;}
+
+/* MIC BUTTON */
+.mic-area{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px 18px;}
+.mic-btn{
+  width:140px;height:140px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  font-family:inherit;font-size:13px;font-weight:700;color:#fff;
+  transition:all .18s;position:relative;overflow:hidden;
+}
+.mic-btn.idle{background:linear-gradient(135deg,#1f6feb,#388bfd);box-shadow:0 0 0 0 rgba(56,139,253,.4);}
+.mic-btn.live{background:linear-gradient(135deg,#da3633,#f85149);box-shadow:0 0 0 12px rgba(248,81,73,.25);animation:mic-pulse 1s infinite;}
+@keyframes mic-pulse{0%,100%{box-shadow:0 0 0 12px rgba(248,81,73,.15)}50%{box-shadow:0 0 0 20px rgba(248,81,73,.05)}}
+.mic-btn.idle:active{transform:scale(.95);}
+.mic-icon{font-size:42px;line-height:1;}
+.mic-label{font-size:12px;opacity:.9;}
+.mic-mode{display:flex;gap:8px;}
+.mode-btn{padding:7px 16px;border-radius:16px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
+.mode-btn.on{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+/* LEVEL METER */
+.level-bar{width:100%;max-width:260px;height:10px;background:var(--border);border-radius:5px;overflow:hidden;}
+.level-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold),var(--red));width:0%;transition:width .08s;}
+
+/* QR */
+.qr-wrap{background:#fff;border-radius:10px;padding:10px;display:inline-block;}
+.qr-wrap svg{width:180px;height:180px;display:block;}
+
+/* SPEAKER LIST */
+.spk-list{display:flex;flex-direction:column;gap:6px;}
+.spk-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;font-size:13px;}
+.spk-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+.spk-empty{font-size:13px;color:var(--muted);padding:8px 0;}
+
+/* BANNER */
+.banner{font-size:12px;padding:10px 14px;border-radius:8px;border-left:3px solid var(--red);background:rgba(248,81,73,.1);color:var(--red);}
+.banner.info{border-left-color:var(--green);background:rgba(63,185,80,.08);color:var(--green);}
+
+/* TEXT ANNOUNCE */
+.text-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:14px;font-family:inherit;outline:none;resize:none;height:64px;}
+.send-btn{width:100%;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;transition:all .18s;}
+.send-btn:hover{opacity:.85;}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="hd">
+    <div class="hd-title">🎙 店内アナウンス</div>
+    <div class="conn-pill off" id="connPill"><div class="cdot"></div><span id="connLabel">準備中</span></div>
+    <span class="spk-count" id="spkCount">スピーカー: 0台</span>
+  </header>
+
+  <div class="body">
+    <!-- MIC -->
+    <div class="mic-area">
+      <div id="banner" class="banner" style="display:none;width:100%;max-width:320px;"></div>
+      <button class="mic-btn idle" id="micBtn" onclick="toggleMic()" disabled>
+        <div class="mic-icon">🎙</div>
+        <div class="mic-label" id="micBtnLabel">タップして話す</div>
+      </button>
+      <div class="mic-mode">
+        <button class="mode-btn on" id="modePTT" onclick="setMode('ptt')">押し話し</button>
+        <button class="mode-btn" id="modeCont" onclick="setMode('cont')">連続配信</button>
+      </div>
+      <div class="level-bar"><div class="level-fill" id="levelFill"></div></div>
+    </div>
+
+    <!-- TEXT ANNOUNCE -->
+    <div class="section">
+      <div class="section-title">テキストアナウンス</div>
+      <textarea class="text-input" id="textInput" placeholder="メッセージを入力（スピーカー側に表示）"></textarea>
+      <button class="send-btn" id="sendTextBtn" onclick="sendText()" disabled>📢 送信</button>
+    </div>
+
+    <!-- QR -->
+    <div class="section">
+      <div class="section-title">スピーカー接続QR</div>
+      <div id="qrWrap" class="qr-wrap" style="display:none;"><div id="qrBox"></div></div>
+      <div id="qrPlaceholder" style="font-size:13px;color:var(--muted);">準備中...</div>
+    </div>
+
+    <!-- SPEAKERS -->
+    <div class="section">
+      <div class="section-title">接続中のスピーカー</div>
+      <div class="spk-list" id="spkList"><div class="spk-empty">まだ接続されていません</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let peer = null;
+let speakers = []; // [{id, conn, call}]
+let micStream = null;
+let audioCtx = null;
+let analyser = null;
+let micActive = false;
+let mode = 'ptt'; // 'ptt' | 'cont'
+let pttDown = false;
+
+// ── PEER SETUP ──
+function initPeer() {
+  const id = 'ann-mic-' + Math.random().toString(36).slice(2, 8);
+  peer = new Peer(id, { debug: 0 });
+  peer.on('open', () => {
+    setConn(true, 'オンライン');
+    generateQR(id);
+  });
+  peer.on('connection', (conn) => {
+    // Data connection for text/control messages
+    const spk = { id: conn.peer, conn, call: null, name: 'スピーカー ' + (speakers.length + 1) };
+    speakers.push(spk);
+    conn.on('close', () => {
+      speakers = speakers.filter(s => s.id !== conn.peer);
+      updateSpkList();
+    });
+    updateSpkList();
+    // If mic is already live (continuous mode), call this new speaker
+    if (micStream && micActive) callSpeaker(spk);
+  });
+  peer.on('call', () => {}); // ignore incoming calls
+  peer.on('error', (e) => setConn(false, 'エラー: ' + e.type));
+}
+
+function setConn(ok, msg) {
+  const pill = document.getElementById('connPill');
+  pill.className = 'conn-pill ' + (ok ? 'on' : 'off');
+  document.getElementById('connLabel').textContent = msg;
+}
+
+// ── QR ──
+function generateQR(hostId) {
+  const base = detectSpeakerUrl();
+  if (!base) { document.getElementById('qrPlaceholder').textContent = '⚠ HTTPSで開いてください（カメラ/マイクに必要）'; return; }
+  const url = base + '?h=' + encodeURIComponent(hostId);
+  try {
+    const qr = qrcode(0, 'L'); qr.addData(url); qr.make();
+    document.getElementById('qrBox').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    document.getElementById('qrWrap').style.display = 'inline-block';
+    document.getElementById('qrPlaceholder').style.display = 'none';
+  } catch { document.getElementById('qrPlaceholder').textContent = 'URLが長すぎます'; }
+}
+function detectSpeakerUrl() {
+  try {
+    const url = new URL('./announce-speaker.html', location.href).href;
+    if (url.startsWith('https') || url.startsWith('http://localhost')) return url;
+  } catch {}
+  return '';
+}
+
+// ── MIC ──
+async function initMic() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    document.getElementById('micBtn').disabled = false;
+    document.getElementById('sendTextBtn').disabled = false;
+    setupAnalyser();
+    showBanner('マイクの準備ができました', 'info');
+    if (mode === 'cont') startBroadcast();
+  } catch(e) {
+    showBanner('マイクへのアクセスが拒否されました。ブラウザの設定を確認してください。');
+  }
+}
+function setupAnalyser() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = audioCtx.createMediaStreamSource(micStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  src.connect(analyser);
+  updateLevel();
+}
+function updateLevel() {
+  if (!analyser) return;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  const avg = data.reduce((a,b) => a+b) / data.length;
+  document.getElementById('levelFill').style.width = Math.min(100, avg * 2.5) + '%';
+  requestAnimationFrame(updateLevel);
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('modePTT').classList.toggle('on', m === 'ptt');
+  document.getElementById('modeCont').classList.toggle('on', m === 'cont');
+  if (m === 'cont' && micStream) startBroadcast();
+  else if (m === 'ptt' && micActive && mode !== 'cont') stopBroadcast();
+  updateMicBtn();
+}
+
+function toggleMic() {
+  if (mode === 'ptt') {
+    if (!micActive) startBroadcast(); else stopBroadcast();
+  }
+}
+
+function startBroadcast() {
+  if (!micStream) return;
+  micActive = true;
+  speakers.forEach(callSpeaker);
+  updateMicBtn();
+}
+function stopBroadcast() {
+  micActive = false;
+  speakers.forEach(s => { try { s.call?.close(); s.call = null; } catch {} });
+  updateMicBtn();
+}
+function callSpeaker(spk) {
+  if (!micStream || !peer) return;
+  try {
+    const call = peer.call(spk.id, micStream);
+    spk.call = call;
+  } catch {}
+}
+function updateMicBtn() {
+  const btn = document.getElementById('micBtn');
+  const lbl = document.getElementById('micBtnLabel');
+  if (micActive) {
+    btn.className = 'mic-btn live';
+    lbl.textContent = mode === 'cont' ? '配信中' : 'タップで終了';
+  } else {
+    btn.className = 'mic-btn idle';
+    lbl.textContent = mode === 'ptt' ? 'タップして話す' : '連続配信 準備完了';
+  }
+}
+
+// ── TEXT SEND ──
+function sendText() {
+  const txt = document.getElementById('textInput').value.trim();
+  if (!txt) return;
+  speakers.forEach(s => { try { s.conn.send({ type: 'text', message: txt }); } catch {} });
+  document.getElementById('textInput').value = '';
+  showBanner('「' + txt + '」を送信しました', 'info');
+}
+
+// ── SPEAKER LIST ──
+function updateSpkList() {
+  document.getElementById('spkCount').textContent = 'スピーカー: ' + speakers.length + '台';
+  const list = document.getElementById('spkList');
+  if (!speakers.length) { list.innerHTML = '<div class="spk-empty">まだ接続されていません</div>'; return; }
+  list.innerHTML = speakers.map((s, i) => `
+    <div class="spk-item">
+      <div class="spk-dot"></div>
+      <span>${s.name}</span>
+    </div>`).join('');
+}
+
+function showBanner(msg, type = '') {
+  const el = document.getElementById('banner');
+  el.className = 'banner' + (type === 'info' ? ' info' : '');
+  el.textContent = msg; el.style.display = 'block';
+  if (type === 'info') setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// Check HTTPS
+if (!window.isSecureContext) {
+  showBanner('⚠ マイクにはHTTPS接続が必要です。GitHubPagesなどで開いてください。');
+} else {
+  initPeer();
+  initMic();
+}
+</script>
+</body>
+</html>

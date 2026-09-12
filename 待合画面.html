@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>待合室 受付画面</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#f0f4f8;--white:#fff;--primary:#1a73e8;--primary-d:#1557b0;
+  --green:#34a853;--red:#ea4335;--gold:#fbbc04;--gray:#5f6368;
+  --border:#dadce0;--shadow:0 2px 12px rgba(0,0,0,.1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);font-family:'Noto Sans JP',sans-serif;color:#202124;min-height:100vh;}
+
+.header{background:var(--primary);color:#fff;padding:16px 24px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.header-title{font-family:'Dela Gothic One',sans-serif;font-size:22px;letter-spacing:.05em;flex:1;}
+.header-sub{font-size:12px;opacity:.8;margin-top:2px;font-weight:400;}
+.conn-badge{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:#69f0ae;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.conn-dot.off{background:#ff5252;animation:none;}
+
+.main{display:grid;grid-template-columns:320px 1fr;gap:20px;padding:20px;max-width:1200px;margin:0 auto;}
+@media(max-width:700px){.main{grid-template-columns:1fr;}}
+
+/* LEFT PANEL */
+.left{display:flex;flex-direction:column;gap:14px;}
+.card{background:var(--white);border-radius:14px;box-shadow:var(--shadow);padding:20px;}
+.card-title{font-size:13px;font-weight:700;color:var(--gray);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;}
+
+/* NOW SERVING */
+.serving-num{font-family:'Dela Gothic One',sans-serif;font-size:72px;color:var(--primary);text-align:center;line-height:1;margin:10px 0;}
+.serving-label{text-align:center;font-size:14px;color:var(--gray);margin-bottom:14px;}
+
+/* QR CODE */
+.qr-area{background:var(--bg);border-radius:10px;padding:16px;text-align:center;}
+.qr-box{background:#fff;border-radius:8px;padding:10px;display:inline-block;margin-bottom:8px;}
+.qr-box svg{width:200px;height:200px;display:block;}
+.qr-label{font-size:12px;color:var(--gray);}
+.qr-count{font-size:11px;color:var(--primary);font-weight:700;margin-top:4px;}
+
+/* SETTINGS */
+.setting-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.setting-label{font-size:13px;color:#202124;flex:1;}
+input[type=text]{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;color:#202124;outline:none;width:100%;}
+input[type=text]:focus{border-color:var(--primary);}
+.btn{font-family:inherit;font-size:14px;padding:10px 18px;border-radius:8px;border:none;cursor:pointer;transition:all .18s;font-weight:700;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-d);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-sm{font-size:12px;padding:6px 14px;border-radius:6px;}
+
+/* RIGHT PANEL */
+.right{display:flex;flex-direction:column;gap:14px;}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.stat{background:var(--white);border-radius:12px;box-shadow:var(--shadow);padding:14px 16px;text-align:center;}
+.stat-n{font-family:'Dela Gothic One',sans-serif;font-size:34px;line-height:1;}
+.stat-n.wait{color:var(--gold);}
+.stat-n.done{color:var(--green);}
+.stat-n.total{color:var(--primary);}
+.stat-l{font-size:11px;color:var(--gray);margin-top:3px;}
+
+/* TICKET LIST */
+.ticket-list{display:flex;flex-direction:column;gap:8px;max-height:500px;overflow-y:auto;}
+.ticket-item{background:var(--white);border-radius:10px;box-shadow:var(--shadow);padding:12px 16px;display:flex;align-items:center;gap:12px;border-left:4px solid transparent;transition:all .2s;}
+.ticket-item.waiting{border-left-color:var(--gold);}
+.ticket-item.called{border-left-color:var(--primary);background:#e8f0fe;}
+.ticket-item.done{border-left-color:var(--green);opacity:.6;}
+.ticket-num{font-family:'Dela Gothic One',sans-serif;font-size:28px;width:50px;text-align:center;}
+.ticket-num.waiting{color:var(--gold);}
+.ticket-num.called{color:var(--primary);}
+.ticket-num.done{color:var(--green);}
+.ticket-info{flex:1;}
+.ticket-status{font-size:12px;font-weight:700;color:var(--gray);}
+.ticket-time{font-size:11px;color:var(--gray);margin-top:1px;}
+.ticket-actions{display:flex;gap:6px;}
+.call-btn{background:var(--primary);color:#fff;font-family:inherit;font-size:12px;padding:7px 14px;border:none;border-radius:7px;cursor:pointer;font-weight:700;transition:all .18s;}
+.call-btn:hover{background:var(--primary-d);}
+.call-btn:disabled{background:#ccc;cursor:not-allowed;}
+.done-btn{background:var(--green);color:#fff;font-family:inherit;font-size:12px;padding:7px 14px;border:none;border-radius:7px;cursor:pointer;font-weight:700;}
+.empty-list{text-align:center;color:var(--gray);padding:30px;font-size:14px;}
+
+/* CALLED OVERLAY (呼び出しアニメ) */
+.call-overlay{
+  position:fixed;top:20px;right:20px;z-index:100;
+  background:var(--primary);color:#fff;
+  padding:16px 24px;border-radius:14px;
+  font-size:15px;font-weight:700;
+  box-shadow:0 8px 24px rgba(26,115,232,.4);
+  transform:translateX(130%);transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+.call-overlay.on{transform:translateX(0);}
+.call-overlay-num{font-family:'Dela Gothic One',sans-serif;font-size:36px;line-height:1;margin-bottom:2px;}
+.call-overlay-sub{font-size:12px;opacity:.85;}
+
+/* URL SETUP */
+.url-setup{background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.7;}
+.url-setup strong{color:#856404;}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <div class="header-title">🏥 待合室 受付システム</div>
+    <div class="header-sub">Waiting Room Management</div>
+  </div>
+  <div class="conn-badge">
+    <div class="conn-dot" id="connDot"></div>
+    <span id="connLabel">接続準備中...</span>
+  </div>
+</header>
+
+<div class="main">
+  <!-- LEFT -->
+  <div class="left">
+
+    <!-- 現在対応中 -->
+    <div class="card">
+      <div class="card-title">現在対応中</div>
+      <div class="serving-num" id="servingNum">—</div>
+      <div class="serving-label">番</div>
+    </div>
+
+    <!-- QRコード -->
+    <div class="card">
+      <div class="card-title">整理券QRコード</div>
+      <div id="urlSetup" class="url-setup" style="display:none;">
+        <strong>⚠ 設定が必要です</strong><br>
+        ticket.htmlのURLを入力してください<br>
+        <small>（GitHubPagesなどHTTPS必須）</small>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <input type="text" id="ticketUrlInput" placeholder="https://example.com/ticket.html">
+          <button class="btn btn-primary btn-sm" onclick="setTicketUrl()">設定</button>
+        </div>
+      </div>
+      <div class="qr-area" id="qrArea">
+        <div class="qr-box" id="qrBox"></div>
+        <div class="qr-label">お客様にスキャンしてもらってください</div>
+        <div class="qr-count" id="qrCount"></div>
+      </div>
+    </div>
+
+    <!-- 設定 -->
+    <div class="card">
+      <div class="card-title">設定</div>
+      <div class="setting-row">
+        <span class="setting-label">施設名</span>
+        <input type="text" id="facilityName" value="〇〇クリニック" style="max-width:160px;">
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="resetAll()" style="width:100%;">🔄 全リセット</button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <div class="stats-row">
+      <div class="stat"><div class="stat-n wait" id="statWait">0</div><div class="stat-l">⏳ 待機中</div></div>
+      <div class="stat"><div class="stat-n done" id="statDone">0</div><div class="stat-l">✅ 対応済み</div></div>
+      <div class="stat"><div class="stat-n total" id="statTotal">0</div><div class="stat-l">📋 本日合計</div></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;margin-bottom:14px;">
+        <div class="card-title" style="margin-bottom:0;flex:1;">待機リスト</div>
+        <button class="btn btn-primary btn-sm" onclick="callNext()">▶ 次を呼ぶ</button>
+      </div>
+      <div class="ticket-list" id="ticketList">
+        <div class="empty-list">📋 まだ整理券がありません</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 呼び出しオーバーレイ -->
+<div class="call-overlay" id="callOverlay">
+  <div class="call-overlay-num" id="callOverlayNum">5番</div>
+  <div class="call-overlay-sub">をお呼びしました</div>
+</div>
+
+<script>
+// ── STATE ──
+let peer = null;
+let connections = {}; // { ticketNum: DataConnection }
+let tickets = [];     // [{num, conn, status:'waiting'|'called'|'done', time}]
+let nextNum = 1;
+let servingNum = null;
+let ticketBaseUrl = '';
+
+// ── PEER SETUP ──
+function initPeer() {
+  const hostId = 'wr-host-' + Math.random().toString(36).slice(2, 8);
+  peer = new Peer(hostId, { debug: 0 });
+
+  peer.on('open', (id) => {
+    document.getElementById('connLabel').textContent = '待機中 — ' + id;
+    document.getElementById('connDot').className = 'conn-dot';
+    generateQR(id);
+  });
+
+  peer.on('connection', (conn) => {
+    conn.on('open', () => {
+      const num = nextNum++;
+      const ticket = { num, conn, status: 'waiting', time: new Date() };
+      tickets.push(ticket);
+      connections[num] = conn;
+      conn.send({ type: 'ticket', number: num, facility: document.getElementById('facilityName').value });
+      updateStats();
+      renderList();
+    });
+    conn.on('close', () => {
+      // mark as disconnected
+      const t = tickets.find(t => t.conn === conn);
+      if (t && t.status === 'waiting') { t.status = 'done'; updateStats(); renderList(); }
+    });
+  });
+
+  peer.on('error', (e) => {
+    document.getElementById('connLabel').textContent = 'エラー: ' + e.type;
+    document.getElementById('connDot').className = 'conn-dot off';
+  });
+}
+
+// ── QR GENERATION ──
+function generateQR(hostId) {
+  const base = ticketBaseUrl || detectTicketUrl();
+  if (!base) {
+    document.getElementById('urlSetup').style.display = 'block';
+    document.getElementById('qrBox').innerHTML = '';
+    return;
+  }
+  const url = base + '?h=' + encodeURIComponent(hostId) + '&f=' + encodeURIComponent(document.getElementById('facilityName').value);
+  try {
+    const qr = qrcode(0, 'L');
+    qr.addData(url);
+    qr.make();
+    document.getElementById('qrBox').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    document.getElementById('urlSetup').style.display = 'none';
+  } catch(e) {
+    document.getElementById('qrBox').innerHTML = '<p style="font-size:11px;color:#888;padding:20px;">URLが長すぎます</p>';
+  }
+}
+
+function detectTicketUrl() {
+  // Try to auto-detect ticket.html URL from current location
+  try {
+    const url = new URL('./waiting-ticket.html', location.href).href;
+    if (url.startsWith('http')) return url;
+  } catch {}
+  return '';
+}
+
+function setTicketUrl() {
+  ticketBaseUrl = document.getElementById('ticketUrlInput').value.trim();
+  if (ticketBaseUrl && peer && peer.id) generateQR(peer.id);
+}
+
+// ── CALL FUNCTIONS ──
+function callTicket(num) {
+  const ticket = tickets.find(t => t.num === num);
+  if (!ticket || ticket.status === 'done') return;
+  ticket.status = 'called';
+  servingNum = num;
+  document.getElementById('servingNum').textContent = num;
+  if (ticket.conn && ticket.conn.open) {
+    ticket.conn.send({ type: 'called', number: num });
+  }
+  showCallOverlay(num);
+  updateStats();
+  renderList();
+}
+
+function callNext() {
+  const next = tickets.find(t => t.status === 'waiting');
+  if (next) callTicket(next.num);
+}
+
+function markDone(num) {
+  const ticket = tickets.find(t => t.num === num);
+  if (!ticket) return;
+  ticket.status = 'done';
+  if (ticket.conn && ticket.conn.open) ticket.conn.send({ type: 'done', number: num });
+  updateStats(); renderList();
+}
+
+function showCallOverlay(num) {
+  document.getElementById('callOverlayNum').textContent = num + '番';
+  const el = document.getElementById('callOverlay');
+  el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 3000);
+}
+
+// ── RENDER ──
+function renderList() {
+  const list = document.getElementById('ticketList');
+  if (!tickets.length) { list.innerHTML = '<div class="empty-list">📋 まだ整理券がありません</div>'; return; }
+  const STATUS = { waiting: '⏳ 待機中', called: '📢 呼び出し中', done: '✅ 対応済み' };
+  list.innerHTML = [...tickets].reverse().map(t => `
+    <div class="ticket-item ${t.status}">
+      <div class="ticket-num ${t.status}">${t.num}</div>
+      <div class="ticket-info">
+        <div class="ticket-status">${STATUS[t.status]}</div>
+        <div class="ticket-time">${t.time.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div class="ticket-actions">
+        ${t.status !== 'done' ? `<button class="call-btn" onclick="callTicket(${t.num})" ${t.status==='called'?'disabled':''}>📢 呼ぶ</button>` : ''}
+        ${t.status !== 'done' ? `<button class="done-btn" onclick="markDone(${t.num})">✓</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('qrCount').textContent = `${tickets.filter(t=>t.status==='waiting').length}人 待機中`;
+}
+
+function updateStats() {
+  document.getElementById('statWait').textContent = tickets.filter(t=>t.status==='waiting').length;
+  document.getElementById('statDone').textContent = tickets.filter(t=>t.status==='done').length;
+  document.getElementById('statTotal').textContent = tickets.length;
+}
+
+function resetAll() {
+  if (!confirm('本日の番号をリセットしますか？')) return;
+  tickets.forEach(t => { if(t.conn&&t.conn.open) t.conn.send({type:'reset'}); });
+  tickets = []; nextNum = 1; servingNum = null;
+  document.getElementById('servingNum').textContent = '—';
+  updateStats(); renderList();
+}
+
+initPeer();
+</script>
+</body>
+</html>

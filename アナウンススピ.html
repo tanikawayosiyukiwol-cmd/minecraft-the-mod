@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>スピーカー | 店内アナウンス</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'Noto Sans JP',sans-serif;background:#0d1117;color:#e6edf3;overflow:hidden;}
+.shell{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:24px;text-align:center;}
+
+/* STATUS CARD */
+.status-card{
+  background:#161b22;border:1px solid #30363d;border-radius:20px;
+  padding:32px 40px;width:100%;max-width:320px;
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+}
+.status-icon{font-size:64px;line-height:1;}
+.status-icon.live{animation:pulse-icon 1s ease infinite alternate;}
+@keyframes pulse-icon{from{transform:scale(1)}to{transform:scale(1.08)}}
+.status-title{font-family:'Dela Gothic One',sans-serif;font-size:20px;letter-spacing:.06em;}
+.status-sub{font-size:13px;color:#8b949e;line-height:1.6;}
+
+/* STATE COLORS */
+.state-connecting .status-icon{filter:grayscale(.5);}
+.state-waiting .status-title{color:#58a6ff;}
+.state-live .status-title{color:#f85149;}
+.state-live{animation:border-pulse 1.2s ease infinite alternate;}
+@keyframes border-pulse{from{border-color:#30363d}to{border-color:rgba(248,81,73,.6);box-shadow:0 0 20px rgba(248,81,73,.15)}}
+
+/* VOLUME */
+.vol-area{width:100%;max-width:280px;display:flex;flex-direction:column;gap:8px;}
+.vol-label{font-size:12px;color:#8b949e;display:flex;justify-content:space-between;}
+.vol-slider{width:100%;-webkit-appearance:none;appearance:none;height:8px;border-radius:4px;background:#30363d;outline:none;cursor:pointer;}
+.vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#58a6ff;cursor:pointer;}
+
+/* TEXT MESSAGE */
+.text-popup{
+  position:fixed;top:0;left:0;right:0;
+  background:#1f6feb;color:#fff;
+  padding:16px 20px;font-size:15px;font-weight:700;text-align:center;
+  transform:translateY(-100%);transition:transform .3s ease;
+  z-index:50;
+}
+.text-popup.on{transform:translateY(0);}
+
+/* CONNECTING SPINNER */
+.spinner{width:44px;height:44px;border:4px solid #30363d;border-top-color:#58a6ff;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.err-box{background:rgba(248,81,73,.1);border:1px solid #f85149;border-radius:10px;padding:14px 18px;font-size:13px;color:#f85149;max-width:300px;line-height:1.6;}
+
+/* CONNECTION PILL */
+.conn-pill{position:fixed;top:12px;right:12px;display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;}
+.conn-pill.on{background:rgba(63,185,80,.12);border:1px solid #3fb950;color:#3fb950;}
+.conn-pill.off{background:rgba(248,81,73,.1);border:1px solid #f85149;color:#f85149;}
+.cdot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.8s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.conn-pill.off .cdot{animation:none;}
+</style>
+</head>
+<body>
+
+<div class="conn-pill off" id="connPill"><div class="cdot"></div><span id="connLabel">接続中</span></div>
+<div class="text-popup" id="textPopup"></div>
+
+<div class="shell" id="shell">
+  <!-- CONNECTING STATE -->
+  <div id="stateConnecting">
+    <div class="spinner"></div>
+    <p style="font-size:14px;color:#8b949e;margin-top:12px;">マイク側に接続中...</p>
+    <div id="errBox" style="display:none;" class="err-box"></div>
+  </div>
+
+  <!-- CONNECTED STATE -->
+  <div id="stateConnected" style="display:none;flex-direction:column;align-items:center;gap:20px;">
+    <div class="status-card state-waiting" id="statusCard">
+      <div class="status-icon" id="statusIcon">🔇</div>
+      <div class="status-title" id="statusTitle">待機中</div>
+      <div class="status-sub" id="statusSub">アナウンスが来ると<br>自動で再生されます</div>
+    </div>
+
+    <audio id="audioEl" autoplay playsinline style="display:none;"></audio>
+
+    <div class="vol-area">
+      <div class="vol-label">
+        <span>🔈 音量</span>
+        <span id="volVal">80%</span>
+      </div>
+      <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="80"
+        oninput="setVolume(this.value)">
+    </div>
+
+    <p style="font-size:12px;color:#484f58;max-width:260px;line-height:1.7;">
+      この画面を開いたままにしてください。<br>
+      アナウンス中は自動で音声が流れます。
+    </p>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const hostId = params.get('h');
+
+if (!hostId) {
+  showErr('URLが不正です。マイク側のQRコードをスキャンしてください。');
+} else {
+  connect();
+}
+
+function connect() {
+  const peer = new Peer({ debug: 0 });
+
+  peer.on('open', () => {
+    setConn(true, '接続済み');
+    // Connect data channel to host
+    const conn = peer.connect(hostId);
+    conn.on('data', (data) => {
+      if (data.type === 'text') showTextMsg(data.message);
+    });
+    conn.on('error', () => {});
+    // Show connected state
+    document.getElementById('stateConnecting').style.display = 'none';
+    document.getElementById('stateConnected').style.display = 'flex';
+    // Keep screen on
+    if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
+  });
+
+  // Receive audio call from mic
+  peer.on('call', (call) => {
+    call.answer(); // no stream from speaker side
+    call.on('stream', (stream) => {
+      setLive(true);
+      const audio = document.getElementById('audioEl');
+      audio.srcObject = stream;
+      audio.volume = document.getElementById('volSlider').value / 100;
+      audio.play().catch(() => {
+        // Autoplay blocked — need user interaction
+        showTextMsg('▶ タップして音声を有効にしてください');
+        document.body.onclick = () => { audio.play(); document.body.onclick = null; };
+      });
+      stream.getTracks()[0].addEventListener('ended', () => setLive(false));
+    });
+    call.on('close', () => setLive(false));
+    call.on('error', () => setLive(false));
+  });
+
+  peer.on('error', (e) => {
+    if (e.type === 'peer-unavailable') {
+      showErr('マイク側が見つかりません。マイク画面を確認してください。');
+    } else {
+      setConn(false, 'エラー: ' + e.type);
+    }
+  });
+}
+
+function setLive(live) {
+  const card = document.getElementById('statusCard');
+  const icon = document.getElementById('statusIcon');
+  const title = document.getElementById('statusTitle');
+  const sub = document.getElementById('statusSub');
+  if (live) {
+    card.className = 'status-card state-live';
+    icon.textContent = '📢';
+    icon.className = 'status-icon live';
+    title.textContent = 'アナウンス中';
+    sub.textContent = '音声を受信しています';
+    if (navigator.vibrate) navigator.vibrate(200);
+  } else {
+    card.className = 'status-card state-waiting';
+    icon.textContent = '🔇';
+    icon.className = 'status-icon';
+    title.textContent = '待機中';
+    sub.textContent = 'アナウンスが来ると\n自動で再生されます';
+    document.getElementById('audioEl').srcObject = null;
+  }
+}
+
+function setVolume(val) {
+  document.getElementById('volVal').textContent = val + '%';
+  document.getElementById('audioEl').volume = val / 100;
+}
+
+function showTextMsg(msg) {
+  const el = document.getElementById('textPopup');
+  el.textContent = '📢 ' + msg;
+  el.classList.add('on');
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  clearTimeout(window._txtTimer);
+  window._txtTimer = setTimeout(() => el.classList.remove('on'), 5000);
+}
+
+function setConn(ok, msg) {
+  const pill = document.getElementById('connPill');
+  pill.className = 'conn-pill ' + (ok ? 'on' : 'off');
+  document.getElementById('connLabel').textContent = msg;
+}
+
+function showErr(msg) {
+  document.getElementById('stateConnecting').querySelector('.spinner') &&
+    (document.getElementById('stateConnecting').querySelector('.spinner').style.display = 'none');
+  document.getElementById('errBox').textContent = msg;
+  document.getElementById('errBox').style.display = 'block';
+}
+</script>
+</body>
+</html>

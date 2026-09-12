@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>整理券</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'Noto Sans JP',sans-serif;background:#f0f4f8;color:#202124;}
+
+/* CONNECTING */
+.connecting{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;}
+.spinner{width:48px;height:48px;border:5px solid #dadce0;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.conn-msg{font-size:15px;color:#5f6368;}
+.conn-err{font-size:14px;color:#ea4335;background:#fce8e6;padding:12px 16px;border-radius:8px;max-width:300px;}
+
+/* TICKET PAGE */
+.ticket-page{height:100%;display:flex;flex-direction:column;display:none;}
+.facility-bar{background:#1a73e8;color:#fff;padding:12px 20px;font-size:14px;font-weight:700;text-align:center;}
+.ticket-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;}
+
+.ticket-card{
+  background:#fff;border-radius:20px;padding:36px 48px;text-align:center;
+  box-shadow:0 4px 24px rgba(0,0,0,.12);width:100%;max-width:320px;
+}
+.ticket-label{font-size:13px;color:#5f6368;letter-spacing:.1em;margin-bottom:8px;}
+.ticket-num{font-family:'Dela Gothic One',sans-serif;font-size:96px;color:#1a73e8;line-height:1;margin:8px 0;}
+.ticket-unit{font-size:18px;color:#5f6368;font-weight:700;}
+.ticket-time{font-size:12px;color:#9aa0a6;margin-top:12px;}
+
+.status-badge{
+  padding:10px 24px;border-radius:24px;font-size:15px;font-weight:700;
+}
+.status-badge.waiting{background:#fff8e1;color:#f9a825;border:2px solid #fdd835;}
+.status-badge.called{background:#e8f5e9;color:#2e7d32;border:2px solid #4caf50;}
+.status-badge.done{background:#f5f5f5;color:#9e9e9e;border:2px solid #bdbdbd;}
+
+.wait-info{font-size:13px;color:#5f6368;text-align:center;}
+.wait-count{font-size:26px;font-weight:900;color:#1a73e8;}
+
+/* CALLED POPUP */
+.called-popup{
+  position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;text-align:center;padding:24px;
+}
+.called-popup.on{display:flex;animation:fadeIn .4s ease;}
+@keyframes fadeIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.called-icon{font-size:72px;animation:bounce 1s ease infinite alternate;}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-12px)}}
+.called-title{font-family:'Dela Gothic One',sans-serif;font-size:28px;color:#fff;}
+.called-num{font-family:'Dela Gothic One',sans-serif;font-size:80px;color:#fbbc04;line-height:1;}
+.called-sub{font-size:16px;color:rgba(255,255,255,.85);line-height:1.7;}
+.called-ok{background:#1a73e8;color:#fff;border:none;padding:14px 40px;border-radius:28px;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<!-- CONNECTING -->
+<div class="connecting" id="connecting">
+  <div class="spinner"></div>
+  <div class="conn-msg" id="connMsg">整理券を取得中...</div>
+  <div class="conn-err" id="connErr" style="display:none;"></div>
+</div>
+
+<!-- TICKET PAGE -->
+<div class="ticket-page" id="ticketPage">
+  <div class="facility-bar" id="facilityBar">待合室</div>
+  <div class="ticket-body">
+    <div class="ticket-card">
+      <div class="ticket-label">🎫 整理券番号</div>
+      <div class="ticket-num" id="ticketNum">—</div>
+      <div class="ticket-unit">番</div>
+      <div class="ticket-time" id="ticketTime"></div>
+    </div>
+    <div class="status-badge waiting" id="statusBadge">⏳ お待ちください</div>
+    <div class="wait-info" id="waitInfo" style="display:none;">
+      あなたの前に<br>
+      <span class="wait-count" id="waitCount">?</span> 人
+    </div>
+    <p style="font-size:12px;color:#9aa0a6;text-align:center;max-width:280px;">
+      この画面を閉じないでください。<br>お名前を呼ばれたら通知でお知らせします。
+    </p>
+  </div>
+</div>
+
+<!-- CALLED POPUP -->
+<div class="called-popup" id="calledPopup">
+  <div class="called-icon">📢</div>
+  <div class="called-title">お呼びしています！</div>
+  <div class="called-num" id="calledNum">5番</div>
+  <div class="called-sub">受付までお越しください。<br>ご来院ありがとうございます。</div>
+  <button class="called-ok" onclick="ackCall()">✓ 向かいます</button>
+</div>
+
+<script>
+// ── URL パラメータ取得 ──
+const params = new URLSearchParams(location.search);
+const hostId = params.get('h');
+const facility = params.get('f') || '待合室';
+
+if (!hostId) {
+  document.getElementById('connMsg').textContent = '';
+  document.getElementById('connErr').style.display = 'block';
+  document.getElementById('connErr').textContent = 'URLが不正です。受付のQRコードをスキャンしてください。';
+} else {
+  document.getElementById('facilityBar').textContent = facility;
+  connect();
+}
+
+function connect() {
+  const peer = new Peer({ debug: 0 });
+  peer.on('open', () => {
+    document.getElementById('connMsg').textContent = '受付に接続中...';
+    const conn = peer.connect(hostId);
+    conn.on('open', () => {
+      document.getElementById('connMsg').textContent = '番号を取得中...';
+    });
+    conn.on('data', (data) => {
+      if (data.type === 'ticket') {
+        showTicket(data.number, data.facility || facility);
+      } else if (data.type === 'called') {
+        showCalled(data.number);
+      } else if (data.type === 'done') {
+        setStatus('done');
+      } else if (data.type === 'reset') {
+        location.reload();
+      }
+    });
+    conn.on('close', () => {
+      document.getElementById('statusBadge').textContent = '⚠ 受付との接続が切れました';
+    });
+    conn.on('error', (e) => showError('接続エラー: ' + e));
+  });
+  peer.on('error', (e) => {
+    if (e.type === 'peer-unavailable') {
+      showError('受付画面が見つかりません。QRコードを再度スキャンしてください。');
+    } else {
+      showError('エラー: ' + e.type);
+    }
+  });
+}
+
+function showTicket(num, fac) {
+  document.getElementById('facilityBar').textContent = fac;
+  document.getElementById('ticketNum').textContent = num;
+  document.getElementById('ticketTime').textContent = '取得時刻: ' + new Date().toLocaleTimeString('ja-JP');
+  document.getElementById('connecting').style.display = 'none';
+  document.getElementById('ticketPage').style.display = 'flex';
+  // Keep screen on if supported
+  if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
+}
+
+function showCalled(num) {
+  setStatus('called');
+  document.getElementById('calledNum').textContent = num + '番';
+  document.getElementById('calledPopup').classList.add('on');
+  if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+  // Play beep sound
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 660, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.3 + 0.25);
+      osc.start(ctx.currentTime + i * 0.3);
+      osc.stop(ctx.currentTime + i * 0.3 + 0.25);
+    });
+  } catch {}
+}
+
+function ackCall() {
+  document.getElementById('calledPopup').classList.remove('on');
+  setStatus('done');
+}
+
+function setStatus(status) {
+  const badge = document.getElementById('statusBadge');
+  const map = {
+    waiting: ['waiting', '⏳ お待ちください'],
+    called:  ['called',  '📢 お呼びしています！'],
+    done:    ['done',    '✅ ありがとうございました'],
+  };
+  badge.className = 'status-badge ' + map[status][0];
+  badge.textContent = map[status][1];
+}
+
+function showError(msg) {
+  document.getElementById('spinner') && (document.querySelector('.spinner').style.display = 'none');
+  document.getElementById('connErr').style.display = 'block';
+  document.getElementById('connErr').textContent = msg;
+  document.getElementById('connMsg').textContent = '';
+}
+</script>
+</body>
+</html>
