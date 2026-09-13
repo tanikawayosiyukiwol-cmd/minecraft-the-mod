@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キッチン管理画面</title>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --bg: #14181c; --panel: #1b2126; --panel-alt: #20272d; --border: #313a41;
+    --text: #e7e4dc; --text-dim: #8f9aa1; --amber: #e8a94c; --red: #e2604f; --teal: #4fd1c5;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Hiragino Sans',sans-serif; padding:20px 16px 60px; }
+  h1 { font-size:20px; margin:0 0 16px; }
+  .board { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; max-width:1200px; margin:0 auto; }
+  .ticket {
+    border:1px solid var(--border); background:var(--panel); border-radius:8px; padding:14px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .ticket.new { border-color:var(--amber); box-shadow:0 0 0 1px var(--amber); }
+  .ticket__header { display:flex; justify-content:space-between; align-items:baseline; }
+  .ticket__table { font-size:20px; font-weight:800; }
+  .ticket__time { font-size:11px; color:var(--text-dim); font-family:monospace; }
+  .ticket__party { font-size:12px; color:var(--text-dim); }
+  .ticket__items { display:flex; flex-direction:column; gap:2px; font-size:14px; }
+  .ticket__item { display:flex; justify-content:space-between; }
+  .ticket__btns { display:flex; gap:8px; margin-top:6px; }
+  .btn { font-family:inherit; font-size:13px; padding:8px 14px; border-radius:5px; border:1px solid var(--border); background:var(--panel-alt); color:var(--text); cursor:pointer; flex:1; }
+  .btn--primary { background:var(--teal); color:#04302c; border-color:var(--teal); font-weight:600; }
+  .btn--danger { background:transparent; color:var(--red); border-color:var(--red); }
+  .empty { color:var(--text-dim); text-align:center; margin-top:60px; }
+</style>
+</head>
+<body>
+<h1>🍳 キッチン管理画面</h1>
+<div class="board" id="board"></div>
+<p class="empty" id="emptyMsg" hidden>今のところ注文はありません。</p>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDBbV89C3tLId929jyK2Ay97BYISkNeOBg",
+  authDomain: "tsuusinkikai-comm-tool.firebaseapp.com",
+  databaseURL: "https://tsuusinkikai-comm-tool-default-rtdb.firebaseio.com",
+  projectId: "tsuusinkikai-comm-tool",
+  storageBucket: "tsuusinkikai-comm-tool.firebasestorage.app",
+  messagingSenderId: "632458639323",
+  appId: "1:632458639323:web:22b7a3e1aae983d6c959fe"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderOrders(orders) {
+  const board = document.getElementById('board');
+  const ids = Object.keys(orders).filter(id => orders[id].status !== 'done')
+    .sort((a, b) => orders[a].ts - orders[b].ts);
+
+  document.getElementById('emptyMsg').hidden = ids.length > 0;
+
+  board.innerHTML = ids.map(id => {
+    const o = orders[id];
+    const time = new Date(o.ts).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    const itemsHtml = (o.items || []).map(it =>
+      '<div class="ticket__item"><span>' + escapeHtml(it.name) + ' ×' + it.qty + '</span></div>'
+    ).join('');
+    return '<div class="ticket ' + (o.status === 'new' ? 'new' : '') + '">' +
+      '<div class="ticket__header"><span class="ticket__table">テーブル ' + escapeHtml(String(o.table)) + '</span><span class="ticket__time">' + time + '</span></div>' +
+      '<div class="ticket__party">来店人数: ' + (o.partySize || '?') + '名</div>' +
+      '<div class="ticket__items">' + itemsHtml + '</div>' +
+      '<div class="ticket__btns">' +
+      '<button class="btn btn--primary done-btn" data-id="' + id + '">完了</button>' +
+      '<button class="btn btn--danger del-btn" data-id="' + id + '">取消</button>' +
+      '</div></div>';
+  }).join('');
+
+  board.querySelectorAll('.done-btn').forEach(btn => {
+    btn.addEventListener('click', () => db.ref('saizeriya_orders/' + btn.dataset.id + '/status').set('done'));
+  });
+  board.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', () => db.ref('saizeriya_orders/' + btn.dataset.id).remove());
+  });
+}
+
+db.ref('saizeriya_orders').on('value', (snap) => {
+  renderOrders(snap.val() || {});
+});
+</script>
+</body>
+</html>
