@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ことでん 運転席操作盤</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#0a0c10;--surface:#12161e;--card:#181e28;--card2:#1e2636;
+  --border:#252d3d;--border2:#2e3a50;
+  --text:#e8edf5;--muted:#5a6a88;--muted2:#7a90b0;
+  --blue:#004B9E;--red:#CC0000;--green:#007A3D;
+  --gold:#d4a017;--white:#fff;
+  --line-color:#004B9E;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;overflow:hidden;}
+.shell{height:100%;display:flex;flex-direction:column;}
+
+/* HEADER */
+.hd{
+  background:var(--surface);border-bottom:2px solid var(--line-color);
+  padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;
+  transition:border-color .4s;
+}
+.hd-logo{font-family:'Dela Gothic One',sans-serif;font-size:16px;color:var(--white);letter-spacing:.12em;}
+.hd-logo span{font-size:10px;display:block;color:var(--muted2);font-family:'Noto Sans JP',sans-serif;font-weight:400;letter-spacing:.06em;}
+.conn-pill{display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;margin-left:auto;}
+.conn-pill.on{background:rgba(0,200,100,.1);border:1px solid #00c864;color:#00c864;}
+.conn-pill.off{background:rgba(255,80,80,.1);border:1px solid #ff5050;color:#ff5050;}
+.cdot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1.8s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.conn-pill.off .cdot{animation:none;}
+.spk-count{font-size:11px;color:var(--muted);}
+
+/* BODY */
+.body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+
+/* SECTIONS */
+.sec{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:13px 14px;}
+.sec-title{font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:10px;}
+
+/* LINE SELECTOR */
+.line-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.line-btn{
+  padding:10px 6px;border-radius:8px;border:1.5px solid var(--border2);
+  background:var(--card);color:var(--muted2);
+  font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;
+  text-align:center;transition:all .18s;
+}
+.line-btn.active-kotohira{background:#004B9E;border-color:#004B9E;color:#fff;}
+.line-btn.active-nagao{background:#CC0000;border-color:#CC0000;color:#fff;}
+.line-btn.active-shido{background:#007A3D;border-color:#007A3D;color:#fff;}
+
+/* DIRECTION + TRAIN TYPE */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.dir-btns,.type-btns{display:flex;flex-direction:column;gap:5px;}
+.toggle-btn{
+  padding:9px;border-radius:7px;border:1.5px solid var(--border2);
+  background:var(--card);color:var(--muted2);
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;
+  text-align:center;
+}
+.toggle-btn.on{background:var(--line-color);border-color:var(--line-color);color:#fff;}
+
+/* STATION SCROLL */
+.station-list{
+  display:flex;gap:0;align-items:stretch;
+  overflow-x:auto;padding-bottom:4px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+}
+.station-list::-webkit-scrollbar{height:4px;}
+.station-list::-webkit-scrollbar-thumb{background:var(--border);}
+.st-btn{
+  display:flex;flex-direction:column;align-items:center;
+  min-width:68px;padding:8px 6px 6px;
+  border:none;background:transparent;cursor:pointer;
+  position:relative;font-family:inherit;
+}
+.st-circle{
+  width:16px;height:16px;border-radius:50%;
+  border:2px solid #555;background:#111;
+  margin-bottom:6px;transition:all .2s;flex-shrink:0;
+}
+.st-btn.passed .st-circle{background:#333;border-color:#444;}
+.st-btn.current .st-circle{
+  background:var(--line-color);border-color:#fff;
+  width:20px;height:20px;
+  box-shadow:0 0 10px var(--line-color);
+}
+.st-btn.next .st-circle{background:#fff;border-color:#fff;}
+.st-line-seg{
+  position:absolute;top:16px;left:50%;width:100%;height:2px;
+  background:#444;transform:translateY(-50%);z-index:0;
+}
+.st-btn.passed .st-line-seg{background:#555;}
+.st-name{font-size:10px;color:#666;text-align:center;line-height:1.3;max-width:60px;}
+.st-btn.current .st-name{color:#fff;font-weight:700;}
+.st-btn.next .st-name{color:var(--muted2);font-weight:700;}
+
+/* NEXT STATION BUTTONS */
+.next-wrap{display:flex;gap:8px;align-items:center;}
+.prev-btn,.next-btn{
+  flex:1;padding:14px 8px;border-radius:10px;border:none;
+  font-family:inherit;font-size:14px;font-weight:900;cursor:pointer;
+  transition:all .18s;
+}
+.prev-btn{background:var(--card2);color:var(--muted2);border:1.5px solid var(--border2);}
+.next-btn{background:var(--line-color);color:#fff;font-size:16px;}
+.next-btn:active{transform:scale(.95);}
+.current-info{
+  flex:1;text-align:center;padding:8px;
+  background:var(--card);border-radius:8px;border:1px solid var(--border2);
+}
+.current-label{font-size:10px;color:var(--muted);margin-bottom:2px;}
+.current-name{font-size:17px;font-weight:900;color:#fff;}
+
+/* DOOR CONTROLS */
+.door-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;}
+.door-btn{
+  padding:13px 8px;border-radius:9px;border:none;
+  font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;
+  transition:all .18s;text-align:center;
+}
+.door-btn:active{transform:scale(.94);}
+.door-open-l,.door-open-r{background:#1a472a;color:#69f0ae;border:1.5px solid #2d6a4f;}
+.door-open-l:hover,.door-open-r:hover{background:#2d6a4f;}
+.door-close{background:#3d1010;color:#ff7675;border:1.5px solid #5d2020;grid-column:1/-1;}
+.door-close:hover{background:#5d2020;}
+
+/* ANNOUNCE BUTTONS */
+.ann-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
+.ann-btn{
+  padding:11px 8px;border-radius:8px;border:none;
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  background:var(--card2);color:var(--text);border:1.5px solid var(--border2);
+  transition:all .18s;text-align:center;line-height:1.4;
+}
+.ann-btn:active{transform:scale(.94);background:var(--line-color);color:#fff;}
+.ann-btn.special{background:rgba(0,75,158,.15);border-color:var(--blue);color:#58a6ff;}
+
+/* MIC */
+.mic-area{display:flex;flex-direction:column;gap:8px;}
+.mic-btn{
+  width:100%;padding:16px;border:none;border-radius:10px;
+  font-family:inherit;font-size:15px;font-weight:900;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .2s;
+}
+.mic-btn.idle{background:var(--card2);color:var(--muted2);border:2px solid var(--border2);}
+.mic-btn.live{background:#c0392b;color:#fff;box-shadow:0 0 20px rgba(192,57,43,.4);animation:mic-live .8s infinite alternate;}
+@keyframes mic-live{from{box-shadow:0 0 12px rgba(192,57,43,.3)}to{box-shadow:0 0 24px rgba(192,57,43,.6)}}
+.level-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.level-fill{height:100%;background:linear-gradient(90deg,#00c864,#d4a017,#ff5050);width:0%;transition:width .08s;}
+
+/* TICKER INPUT */
+.ticker-input{
+  width:100%;background:var(--card);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;
+  padding:9px 12px;outline:none;resize:none;height:56px;
+}
+.ticker-input:focus{border-color:var(--blue);}
+.send-btn{
+  width:100%;padding:10px;background:var(--blue);color:#fff;
+  border:none;border-radius:8px;font-family:inherit;font-size:14px;
+  font-weight:700;cursor:pointer;margin-top:6px;
+}
+
+/* QR AREA */
+.qr-box{background:#fff;border-radius:8px;padding:8px;display:inline-block;}
+.qr-box svg{width:160px;height:160px;display:block;}
+.qr-info{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6;}
+
+/* BANNER */
+.banner{font-size:12px;padding:9px 12px;border-radius:7px;border-left:3px solid #ff5050;background:rgba(255,80,80,.08);color:#ff9090;}
+.banner.info{border-left-color:#00c864;background:rgba(0,200,100,.07);color:#69f0ae;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header class="hd" id="hd">
+  <div class="hd-logo">KOTODEN<span>ことでん 運転席操作盤</span></div>
+  <div class="conn-pill off" id="connPill"><div class="cdot"></div><span id="connLabel">未接続</span></div>
+</header>
+
+<div class="body">
+
+  <!-- 路線選択 -->
+  <div class="sec">
+    <div class="sec-title">路線選択</div>
+    <div class="line-btns">
+      <button class="line-btn active-kotohira" id="btn-kotohira" onclick="selectLine('kotohira')">🔵 琴平線</button>
+      <button class="line-btn" id="btn-nagao"    onclick="selectLine('nagao')">🔴 長尾線</button>
+      <button class="line-btn" id="btn-shido"    onclick="selectLine('shido')">🟢 志度線</button>
+    </div>
+  </div>
+
+  <!-- 方向・種別 -->
+  <div class="sec">
+    <div class="sec-title">方向 ／ 種別</div>
+    <div class="row2">
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:5px;">方向</div>
+        <div class="dir-btns">
+          <button class="toggle-btn on" id="dir-fwd" onclick="setDir(1)">▶ 終点方面</button>
+          <button class="toggle-btn"   id="dir-rev" onclick="setDir(-1)">◀ 始発方面</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:5px;">列車種別</div>
+        <div class="type-btns">
+          <button class="toggle-btn on" id="type-local"  onclick="setType('普通')">普通</button>
+          <button class="toggle-btn"   id="type-express" onclick="setType('急行')">急行</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 現在駅 -->
+  <div class="sec">
+    <div class="sec-title">駅進行</div>
+    <div class="station-list" id="stationList"></div>
+    <div class="next-wrap" style="margin-top:10px;">
+      <button class="prev-btn" onclick="moveStation(-1)">◀ 前の駅</button>
+      <div class="current-info">
+        <div class="current-label">現在地</div>
+        <div class="current-name" id="currentName">—</div>
+      </div>
+      <button class="next-btn" onclick="moveStation(1)" id="nextBtn">次の駅 ▶</button>
+    </div>
+  </div>
+
+  <!-- ドア -->
+  <div class="sec">
+    <div class="sec-title">ドア操作</div>
+    <div class="door-grid">
+      <button class="door-btn door-open-l" onclick="doDoor('open','left')">🚪 左側ドアを開ける</button>
+      <button class="door-btn door-open-r" onclick="doDoor('open','right')">🚪 右側ドアを開ける</button>
+      <button class="door-btn door-close"  onclick="doDoor('close','both')">🔒 ドアを閉める（発車準備）</button>
+    </div>
+  </div>
+
+  <!-- アナウンス -->
+  <div class="sec">
+    <div class="sec-title">定型アナウンス</div>
+    <div class="ann-grid" id="annGrid"></div>
+  </div>
+
+  <!-- マイク -->
+  <div class="sec">
+    <div class="sec-title">マイクアナウンス</div>
+    <div class="mic-area">
+      <div id="micBanner" class="banner" style="display:none;"></div>
+      <button class="mic-btn idle" id="micBtn" onclick="toggleMic()">
+        <span id="micIcon">🎙</span>
+        <span id="micLabel">タップして話す（押し話し）</span>
+      </button>
+      <div class="level-bar"><div class="level-fill" id="levelFill"></div></div>
+    </div>
+  </div>
+
+  <!-- テロップ -->
+  <div class="sec">
+    <div class="sec-title">テロップ（下部スクロール）</div>
+    <textarea class="ticker-input" id="tickerInput"
+      placeholder="例: 本日もことでんをご利用ありがとうございます。">本日もことでんをご利用いただきありがとうございます。安全のため、発車時には必ず手すりや吊り革をお持ちください。</textarea>
+    <button class="send-btn" onclick="sendTicker()">📡 テロップを送信</button>
+  </div>
+
+  <!-- QR -->
+  <div class="sec">
+    <div class="sec-title">LCD接続QR</div>
+    <div id="qrBanner" class="banner" style="display:none;"></div>
+    <div id="qrArea">
+      <div class="qr-box" id="qrBox"></div>
+      <div class="qr-info" id="qrInfo">
+        QRコードをLCD端末でスキャンしてください<br>
+        または URL をコピーして開いてください
+      </div>
+    </div>
+    <input type="text" id="qrUrlInput" readonly style="width:100%;background:var(--card);border:1px solid var(--border2);color:var(--muted2);font-size:11px;padding:8px;border-radius:6px;margin-top:6px;font-family:monospace;cursor:text;">
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── STATION DATA ──
+const LINES = {
+  kotohira: {
+    name:'ことでん 琴平線', nameShort:'琴平線',
+    color:'#004B9E', borderColor:'#004B9E',
+    stations:[
+      {ja:'高松築港',en:'Takamatsu-Chikko'},
+      {ja:'片原町',  en:'Katahara-machi'},
+      {ja:'瓦町',    en:'Kawara-machi'},
+      {ja:'花園',    en:'Hanazono'},
+      {ja:'林道',    en:'Hayashimichi'},
+      {ja:'木太東口',en:'Kita-Higashiguchi'},
+      {ja:'農学部前',en:'Nogakubu-mae'},
+      {ja:'平木',    en:'Hiraki'},
+      {ja:'空港通り',en:'Kuko-dori'},
+      {ja:'三条',    en:'Sanjo'},
+      {ja:'太田',    en:'Ota'},
+      {ja:'岡本',    en:'Okamoto'},
+      {ja:'池戸',    en:'Ikedo'},
+      {ja:'羽床',    en:'Habuka'},
+      {ja:'栗熊',    en:'Kurikuma'},
+      {ja:'岡田',    en:'Okada'},
+      {ja:'羽間',    en:'Hama'},
+      {ja:'琴電琴平',en:'Kotoden-Kotohira'},
+    ]
+  },
+  nagao: {
+    name:'ことでん 長尾線', nameShort:'長尾線',
+    color:'#CC0000', borderColor:'#CC0000',
+    stations:[
+      {ja:'高松築港',  en:'Takamatsu-Chikko'},
+      {ja:'片原町',    en:'Katahara-machi'},
+      {ja:'瓦町',      en:'Kawara-machi'},
+      {ja:'花園',      en:'Hanazono'},
+      {ja:'林道',      en:'Hayashimichi'},
+      {ja:'木太東口',  en:'Kita-Higashiguchi'},
+      {ja:'農学部前',  en:'Nogakubu-mae'},
+      {ja:'平木',      en:'Hiraki'},
+      {ja:'白山',      en:'Shiroyama'},
+      {ja:'水田',      en:'Mizuta'},
+      {ja:'井戸',      en:'Ido'},
+      {ja:'学園通り',  en:'Gakuen-dori'},
+      {ja:'高田',      en:'Takada'},
+      {ja:'讃州井野',  en:'Sanshu-Ino'},
+      {ja:'長尾',      en:'Nagao'},
+    ]
+  },
+  shido: {
+    name:'ことでん 志度線', nameShort:'志度線',
+    color:'#007A3D', borderColor:'#007A3D',
+    stations:[
+      {ja:'瓦町',        en:'Kawara-machi'},
+      {ja:'今橋',        en:'Imabashi'},
+      {ja:'松島二丁目',  en:'Matsushima-nichome'},
+      {ja:'沖松島',      en:'Oki-Matsushima'},
+      {ja:'春日川',      en:'Kasugagawa'},
+      {ja:'潟元',        en:'Katamoto'},
+      {ja:'琴電屋島',    en:'Kotoden-Yashima'},
+      {ja:'古高松南',    en:'Furu-Takamatsu-Minami'},
+      {ja:'八栗口',      en:'Yakuri-guchi'},
+      {ja:'大町',        en:'Omachi'},
+      {ja:'八栗',        en:'Yakuri'},
+      {ja:'六万寺',      en:'Rokumaji'},
+      {ja:'原',          en:'Hara'},
+      {ja:'琴電志度',    en:'Kotoden-Shido'},
+    ]
+  }
+};
+
+// ── STATE ──
+let state = {
+  line: 'kotohira',
+  currentIdx: 0,
+  direction: 1,
+  trainType: '普通',
+  doorSide: 'left'
+};
+let connections = [];
+let peer = null;
+let micStream = null, micActive = false, analyser = null, audioCtx = null;
+
+// ── PEER HOST ──
+function initPeer() {
+  const id = 'ktdn-console-' + Math.random().toString(36).slice(2,8);
+  peer = new Peer(id, { debug: 0 });
+  peer.on('open', () => {
+    setConn(true, 'オンライン');
+    generateQR(id);
+  });
+  peer.on('connection', (conn) => {
+    connections.push(conn);
+    conn.on('open', () => {
+      setConn(true, 'LCD接続中 ' + connections.length + '台');
+      broadcast({ type: 'ticker', text: document.getElementById('tickerInput').value });
+      sendStation();
+    });
+    conn.on('close', () => {
+      connections = connections.filter(c => c !== conn);
+      setConn(connections.length > 0, connections.length > 0 ? 'LCD接続中 ' + connections.length + '台' : 'LCD未接続');
+    });
+  });
+  peer.on('error', e => setConn(false, 'エラー: ' + e.type));
+}
+
+function broadcast(data) {
+  connections.forEach(c => { try { c.send(data); } catch {} });
+}
+
+function setConn(ok, msg) {
+  const pill = document.getElementById('connPill');
+  pill.className = 'conn-pill ' + (ok ? 'on' : 'off');
+  document.getElementById('connLabel').textContent = msg;
+}
+
+// ── QR ──
+function generateQR(hostId) {
+  const lcdUrl = detectLcdUrl();
+  if (!lcdUrl) {
+    document.getElementById('qrBanner').style.display = 'block';
+    document.getElementById('qrBanner').textContent = '⚠ HTTPSで開くとQRが生成されます。URLを直接コピーしてLCDで開いてください。';
+    document.getElementById('qrUrlInput').value = '[lcd.html?h=' + hostId + ' を手動で開いてください]';
+    return;
+  }
+  const url = lcdUrl + '?h=' + encodeURIComponent(hostId);
+  document.getElementById('qrUrlInput').value = url;
+  try {
+    const qr = qrcode(0, 'L'); qr.addData(url); qr.make();
+    document.getElementById('qrBox').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  } catch {
+    document.getElementById('qrBanner').style.display = 'block';
+    document.getElementById('qrBanner').textContent = 'QR生成失敗。URLをコピーしてLCDで開いてください。';
+  }
+}
+function detectLcdUrl() {
+  try {
+    const url = new URL('./kotoden-lcd.html', location.href).href;
+    if (url.startsWith('https') || url.startsWith('http://localhost')) return url;
+  } catch {}
+  return '';
+}
+
+// ── LINE SELECT ──
+function selectLine(line) {
+  state.line = line;
+  state.currentIdx = 0;
+  state.direction = 1;
+  const col = LINES[line].color;
+  document.getElementById('hd').style.borderColor = col;
+  document.documentElement.style.setProperty('--line-color', col);
+  ['kotohira','nagao','shido'].forEach(l => {
+    document.getElementById('btn-'+l).className = 'line-btn' + (l===line ? ' active-'+l : '');
+  });
+  setDir(1);
+  renderStations();
+  sendStation(true);
+}
+
+function setDir(d) {
+  state.direction = d;
+  document.getElementById('dir-fwd').classList.toggle('on', d===1);
+  document.getElementById('dir-rev').classList.toggle('on', d===-1);
+  state.currentIdx = 0;
+  renderStations();
+  sendStation(true);
+}
+
+function setType(t) {
+  state.trainType = t;
+  document.getElementById('type-local').classList.toggle('on', t==='普通');
+  document.getElementById('type-express').classList.toggle('on', t==='急行');
+  sendStation();
+}
+
+// ── STATION RENDER ──
+function getStations() {
+  const line = LINES[state.line];
+  return state.direction === 1 ? line.stations : [...line.stations].reverse();
+}
+function renderStations() {
+  const sts = getStations();
+  const cur = state.currentIdx;
+  const list = document.getElementById('stationList');
+  list.innerHTML = '';
+  sts.forEach((st, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'st-btn' + (i < cur ? ' passed' : i === cur ? ' current' : i === cur+1 ? ' next' : '');
+    btn.onclick = () => { state.currentIdx = i; renderStations(); sendStation(true); };
+    const circle = document.createElement('div'); circle.className = 'st-circle';
+    const name = document.createElement('div'); name.className = 'st-name';
+    name.textContent = st.ja;
+    if (i < sts.length - 1) {
+      const seg = document.createElement('div'); seg.className = 'st-line-seg'; btn.appendChild(seg);
+    }
+    btn.appendChild(circle); btn.appendChild(name);
+    list.appendChild(btn);
+  });
+  // scroll current into view
+  setTimeout(() => {
+    const btns = list.querySelectorAll('.st-btn');
+    btns[cur]?.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+  }, 80);
+  const sts2 = getStations();
+  document.getElementById('currentName').textContent = sts2[cur]?.ja || '—';
+  document.getElementById('nextBtn').textContent = cur < sts2.length-1 ? '次の駅 ▶' : '終点';
+  updateAnnounceButtons();
+}
+
+function moveStation(d) {
+  const sts = getStations();
+  const newIdx = Math.max(0, Math.min(sts.length - 1, state.currentIdx + d));
+  if (newIdx === state.currentIdx) return;
+  state.currentIdx = newIdx;
+  renderStations();
+  sendStation(true);
+}
+
+// ── SEND STATION ──
+function sendStation(announce = false) {
+  const sts = getStations();
+  const cur = state.currentIdx;
+  const nextSt = sts[cur + 1];
+  const dest = sts[sts.length - 1];
+  let ann = null;
+  if (announce && nextSt) {
+    const isTerminus = cur + 2 >= sts.length;
+    if (isTerminus) {
+      ann = `まもなく終点、${nextSt.ja}、${nextSt.ja}です。本日もことでんをご利用いただきありがとうございました。お忘れ物のないようご注意ください。`;
+    } else {
+      ann = `次は、${nextSt.ja}、${nextSt.ja}です。`;
+      const transfer = getTransfer(nextSt.ja);
+      if (transfer) ann += transfer;
+    }
+  }
+  broadcast({
+    type: 'station',
+    line: state.line,
+    currentIdx: cur,
+    direction: state.direction,
+    trainType: state.trainType,
+    doorSide: state.doorSide,
+    announce: ann
+  });
+}
+
+// ── TRANSFER INFO ──
+function getTransfer(stName) {
+  const t = {
+    '瓦町': '瓦町では、長尾線、志度線にお乗り換えいただけます。',
+    '高松築港': '高松築港では、JR高徳線にお乗り換えください。',
+    '平木': '平木は、長尾線と琴平線の分岐駅です。',
+    '池戸': '池戸では、琴平線と長尾線が並行して走ります。',
+  };
+  return t[stName] ? ' ' + t[stName] : null;
+}
+
+// ── DOOR ──
+function doDoor(action, side) {
+  state.doorSide = side === 'both' ? 'left' : side;
+  let ann = '';
+  if (action === 'open') {
+    ann = side === 'left'
+      ? '左側のドアが開きます。ご注意ください。'
+      : '右側のドアが開きます。ご注意ください。';
+  } else {
+    ann = 'ドアが閉まります。ご注意ください。';
+  }
+  broadcast({ type: 'door', action, side, announce: ann });
+}
+
+// ── ANNOUNCE BUTTONS ──
+const ANN_PRESETS = [
+  { label:'▶ 発車します',  text:'発車します。ドアにご注意ください。' },
+  { label:'🔔 まもなく到着', text:() => {
+    const sts = getStations(); const next = sts[state.currentIdx+1];
+    return next ? `まもなく、${next.ja}に到着いたします。` : 'まもなく終点に到着いたします。';
+  }},
+  { label:'📢 終点です',   text:() => {
+    const sts = getStations(); const last = sts[sts.length-1];
+    return `まもなく終点、${last.ja}、${last.ja}です。本日もことでんをご利用ありがとうございました。`;
+  }},
+  { label:'⚠ ドア注意',   text:'ドアにご注意ください。黄色い線の内側にお下がりください。' },
+  { label:'🙏 乗り越し',   text:'乗り越し精算は、終点の窓口でお申し出ください。' },
+  { label:'📱 マナーモード', text:'車内では携帯電話をマナーモードに設定し、通話はご遠慮ください。' },
+  { label:'🎒 お忘れ物',   text:'お忘れ物のないよう、ご注意ください。' },
+  { label:'🚨 緊急停止',   text:'ただいま緊急停止いたしました。しばらくお待ちください。' },
+];
+function updateAnnounceButtons() {
+  const grid = document.getElementById('annGrid');
+  grid.innerHTML = '';
+  ANN_PRESETS.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'ann-btn';
+    btn.textContent = p.label;
+    btn.onclick = () => {
+      const text = typeof p.text === 'function' ? p.text() : p.text;
+      broadcast({ type: 'announce', text });
+    };
+    grid.appendChild(btn);
+  });
+}
+
+// ── MIC ──
+async function toggleMic() {
+  if (!micStream) {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setupAnalyser();
+    } catch(e) {
+      const b = document.getElementById('micBanner');
+      b.style.display = 'block';
+      b.textContent = 'マイクへのアクセスが拒否されました。ブラウザの設定を確認してください。';
+      return;
+    }
+  }
+  if (!micActive) {
+    micActive = true;
+    document.getElementById('micBtn').className = 'mic-btn live';
+    document.getElementById('micLabel').textContent = '配信中 — タップで終了';
+    document.getElementById('micIcon').textContent = '🔴';
+    // Forward mic audio via WebRTC calls to each LCD
+    connections.forEach(conn => {
+      try {
+        if (peer && micStream) peer.call(conn.peer, micStream);
+      } catch {}
+    });
+  } else {
+    micActive = false;
+    document.getElementById('micBtn').className = 'mic-btn idle';
+    document.getElementById('micLabel').textContent = 'タップして話す（押し話し）';
+    document.getElementById('micIcon').textContent = '🎙';
+  }
+}
+function setupAnalyser() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = audioCtx.createMediaStreamSource(micStream);
+  analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
+  src.connect(analyser); updateLevel();
+}
+function updateLevel() {
+  if (!analyser) return;
+  const d = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(d);
+  const avg = d.reduce((a,b)=>a+b)/d.length;
+  document.getElementById('levelFill').style.width = Math.min(100, avg*2.8)+'%';
+  requestAnimationFrame(updateLevel);
+}
+
+// ── TICKER ──
+function sendTicker() {
+  const text = document.getElementById('tickerInput').value.trim();
+  if (!text) return;
+  broadcast({ type: 'ticker', text });
+}
+
+// ── INIT ──
+initPeer();
+selectLine('kotohira');
+updateAnnounceButtons();
+</script>
+</body>
+</html>

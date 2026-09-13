@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ことでん 車内LCD</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:#000;color:#fff;
+  font-family:'Noto Sans JP',sans-serif;
+  user-select:none;
+}
+
+/* ── LINE BAR ── */
+.line-bar{
+  height:44px;display:flex;align-items:center;
+  padding:0 20px;gap:16px;
+  background:var(--line-color,#004B9E);
+  transition:background .5s;
+  flex-shrink:0;
+}
+.line-name{font-size:16px;font-weight:700;letter-spacing:.12em;}
+.train-type{
+  background:rgba(255,255,255,.2);padding:3px 12px;border-radius:3px;
+  font-size:14px;font-weight:700;letter-spacing:.1em;
+}
+.dest-arrow{margin-left:auto;font-size:14px;opacity:.9;letter-spacing:.06em;}
+
+/* ── MAIN AREA ── */
+.main{
+  display:grid;
+  grid-template-columns:1fr 1.4fr 1fr;
+  flex:1;
+  min-height:0;
+  height:calc(100vh - 44px - 38px);
+}
+
+/* ── LEFT: NEXT STATION ── */
+.left{
+  border-right:1px solid rgba(255,255,255,.1);
+  display:flex;flex-direction:column;justify-content:center;
+  padding:16px 24px;gap:6px;
+  background:#080808;
+}
+.next-label{
+  font-size:12px;letter-spacing:.18em;
+  color:rgba(255,255,255,.55);text-transform:uppercase;
+}
+.next-ja{
+  font-size:52px;font-weight:900;line-height:1.05;
+  color:#fff;
+  animation:station-appear .4s ease;
+}
+@keyframes station-appear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.next-en{
+  font-size:16px;font-weight:300;color:rgba(255,255,255,.6);
+  letter-spacing:.08em;margin-top:2px;
+}
+.door-side{
+  margin-top:10px;font-size:13px;font-weight:700;
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.08);padding:5px 14px;border-radius:4px;
+  width:fit-content;
+}
+.door-indicator{
+  width:10px;height:10px;border-radius:50%;
+  background:#69f0ae;box-shadow:0 0 8px #69f0ae;
+}
+
+/* ── CENTER: ROUTE MAP ── */
+.center{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:12px 8px;background:#050505;
+  overflow:hidden;
+}
+.route-map{
+  width:100%;overflow-x:auto;overflow-y:hidden;
+  display:flex;align-items:center;
+  scrollbar-width:none;
+  padding:0 8px;
+}
+.route-map::-webkit-scrollbar{display:none;}
+.route-track{
+  display:flex;align-items:center;
+  gap:0;
+  min-width:max-content;
+  margin:0 auto;
+}
+.st-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  min-width:52px;
+}
+.st-dot{
+  width:14px;height:14px;border-radius:50%;
+  border:2px solid #fff;background:#000;
+  margin:0 4px;position:relative;z-index:1;
+  transition:all .3s;flex-shrink:0;
+}
+.st-dot.current{
+  background:var(--line-color,#004B9E);border-color:#fff;
+  width:18px;height:18px;
+  box-shadow:0 0 12px var(--line-color,#004B9E);
+}
+.st-dot.next-st{
+  background:#fff;border-color:#fff;
+  box-shadow:0 0 8px rgba(255,255,255,.6);
+}
+.st-dot.passed{
+  background:#444;border-color:#555;
+}
+.st-line{
+  height:3px;background:#fff;
+  width:40px;flex-shrink:0;
+  transition:background .3s;
+}
+.st-line.passed{background:#555;}
+.st-name-small{
+  font-size:9px;color:rgba(255,255,255,.7);
+  margin-top:6px;text-align:center;
+  white-space:nowrap;
+  max-width:52px;overflow:hidden;
+  text-overflow:ellipsis;
+}
+.st-name-small.current{color:#fff;font-weight:700;}
+.st-name-small.next-st{color:#fff;font-weight:700;}
+.st-name-small.passed{color:#555;}
+
+.route-info{
+  margin-top:12px;font-size:11px;
+  color:rgba(255,255,255,.4);text-align:center;letter-spacing:.06em;
+}
+
+/* ── RIGHT: DESTINATION ── */
+.right{
+  border-left:1px solid rgba(255,255,255,.1);
+  display:flex;flex-direction:column;justify-content:center;
+  padding:16px 20px;gap:8px;
+  background:#080808;
+  text-align:right;
+}
+.dest-label{font-size:11px;letter-spacing:.16em;color:rgba(255,255,255,.5);}
+.dest-ja{font-size:32px;font-weight:900;color:#fff;line-height:1.1;}
+.dest-en{font-size:13px;font-weight:300;color:rgba(255,255,255,.5);letter-spacing:.06em;}
+.time-display{
+  margin-top:16px;font-size:28px;font-weight:300;
+  color:rgba(255,255,255,.8);font-variant-numeric:tabular-nums;
+  letter-spacing:.06em;
+}
+.date-display{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;}
+
+/* ── TICKER ── */
+.ticker{
+  height:38px;background:#0d0d0d;
+  border-top:1px solid rgba(255,255,255,.08);
+  display:flex;align-items:center;overflow:hidden;
+  flex-shrink:0;padding:0 12px;
+  position:relative;
+}
+.ticker-label{
+  font-size:11px;font-weight:700;letter-spacing:.12em;
+  color:var(--line-color,#004B9E);
+  background:rgba(0,75,158,.15);
+  padding:3px 10px;border-radius:2px;
+  white-space:nowrap;margin-right:16px;flex-shrink:0;
+}
+.ticker-scroll{
+  overflow:hidden;flex:1;
+  mask-image:linear-gradient(to right,transparent 0,black 32px,black calc(100% - 32px),transparent 100%);
+}
+.ticker-inner{
+  white-space:nowrap;font-size:13px;color:rgba(255,255,255,.7);
+  animation:ticker-move 20s linear infinite;
+  display:inline-block;
+}
+@keyframes ticker-move{
+  0%{transform:translateX(100%)}
+  100%{transform:translateX(-100%)}
+}
+
+/* ── DOOR ANIMATION ── */
+.door-overlay{
+  position:fixed;inset:0;z-index:50;pointer-events:none;
+  display:flex;
+}
+.door-left,.door-right{
+  width:50%;height:100%;
+  background:rgba(0,75,158,.92);
+  transform:translateX(-100%);
+  transition:transform .6s ease;
+  display:flex;align-items:center;justify-content:center;
+}
+.door-right{transform:translateX(100%);}
+.door-overlay.open .door-left{transform:translateX(-100%);}
+.door-overlay.open .door-right{transform:translateX(100%);}
+.door-overlay.closed .door-left{transform:translateX(0);}
+.door-overlay.closed .door-right{transform:translateX(0);}
+.door-text{font-size:22px;font-weight:900;color:rgba(255,255,255,.7);letter-spacing:.15em;}
+
+/* ── CONNECTING SCREEN ── */
+.connecting{
+  position:fixed;inset:0;background:#000;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;
+}
+.ktdn-logo{font-size:28px;font-weight:900;letter-spacing:.2em;color:#004B9E;}
+.ktdn-sub{font-size:13px;color:rgba(255,255,255,.4);letter-spacing:.1em;}
+.conn-spinner{
+  width:40px;height:40px;border:3px solid rgba(255,255,255,.1);
+  border-top-color:#004B9E;border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.conn-msg{font-size:13px;color:rgba(255,255,255,.5);}
+.conn-err{font-size:12px;color:#f85149;background:rgba(248,81,73,.1);padding:10px 16px;border-radius:6px;max-width:300px;text-align:center;}
+
+/* ── IDLE SCREEN ── */
+.idle-screen{
+  position:fixed;inset:0;background:#000;z-index:90;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;
+}
+.idle-logo{font-size:48px;font-weight:900;letter-spacing:.25em;color:#004B9E;}
+.idle-sub{font-size:16px;color:rgba(255,255,255,.35);letter-spacing:.15em;}
+.idle-time{font-size:56px;font-weight:200;color:rgba(255,255,255,.8);font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body>
+
+<!-- DOOR OVERLAY -->
+<div class="door-overlay" id="doorOverlay">
+  <div class="door-left"><div class="door-text">ことでん</div></div>
+  <div class="door-right"><div class="door-text">KOTODEN</div></div>
+</div>
+
+<!-- CONNECTING -->
+<div class="connecting" id="connecting">
+  <div class="ktdn-logo">KOTODEN</div>
+  <div class="ktdn-sub">高松琴平電気鉄道</div>
+  <div class="conn-spinner"></div>
+  <div class="conn-msg" id="connMsg">操作盤への接続を待機中...</div>
+  <div class="conn-err" id="connErr" style="display:none;"></div>
+</div>
+
+<!-- IDLE SCREEN -->
+<div class="idle-screen" id="idleScreen" style="display:none;">
+  <div class="idle-logo">KOTODEN</div>
+  <div class="idle-sub">高松琴平電気鉄道</div>
+  <div class="idle-time" id="idleTime"></div>
+</div>
+
+<!-- MAIN LCD -->
+<div id="lcdMain" style="display:none;height:100vh;display:none;flex-direction:column;">
+  <!-- LINE BAR -->
+  <div class="line-bar" id="lineBar">
+    <span class="line-name" id="lineName">ことでん 琴平線</span>
+    <span class="train-type" id="trainType">普通</span>
+    <span class="dest-arrow" id="destArrow">▶ 琴電琴平 行き</span>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="main">
+    <!-- LEFT: NEXT STATION -->
+    <div class="left">
+      <div class="next-label">次は / NEXT STATION</div>
+      <div class="next-ja" id="nextJa">—</div>
+      <div class="next-en" id="nextEn"></div>
+      <div class="door-side" id="doorSideEl" style="display:none;">
+        <div class="door-indicator"></div>
+        <span id="doorSideText">左側のドアが開きます</span>
+      </div>
+    </div>
+
+    <!-- CENTER: ROUTE MAP -->
+    <div class="center">
+      <div class="route-map">
+        <div class="route-track" id="routeTrack"></div>
+      </div>
+      <div class="route-info" id="routeInfo"></div>
+    </div>
+
+    <!-- RIGHT: DESTINATION -->
+    <div class="right">
+      <div class="dest-label">終点 / TERMINAL</div>
+      <div class="dest-ja" id="destJa">—</div>
+      <div class="dest-en" id="destEn"></div>
+      <div class="time-display" id="timeDisplay"></div>
+      <div class="date-display" id="dateDisplay"></div>
+    </div>
+  </div>
+
+  <!-- TICKER -->
+  <div class="ticker">
+    <div class="ticker-label" id="tickerLabel">お知らせ</div>
+    <div class="ticker-scroll">
+      <div class="ticker-inner" id="tickerInner">本日もことでんをご利用いただきありがとうございます。安全のため、発車時には必ず手すりや吊り革をお持ちください。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATION DATA ──
+const LINES = {
+  kotohira: {
+    name: 'ことでん 琴平線', nameShort: '琴平線',
+    romaji: 'Kotohira Line', color: '#004B9E',
+    stations: [
+      {ja:'高松築港',en:'Takamatsu-Chikko'},
+      {ja:'片原町',  en:'Katahara-machi'},
+      {ja:'瓦町',    en:'Kawara-machi'},
+      {ja:'花園',    en:'Hanazono'},
+      {ja:'林道',    en:'Hayashimichi'},
+      {ja:'木太東口',en:'Kita-Higashiguchi'},
+      {ja:'農学部前',en:'Nogakubu-mae'},
+      {ja:'平木',    en:'Hiraki'},
+      {ja:'空港通り',en:'Kuko-dori'},
+      {ja:'三条',    en:'Sanjo'},
+      {ja:'太田',    en:'Ota'},
+      {ja:'岡本',    en:'Okamoto'},
+      {ja:'池戸',    en:'Ikedo'},
+      {ja:'羽床',    en:'Habuka'},
+      {ja:'栗熊',    en:'Kurikuma'},
+      {ja:'岡田',    en:'Okada'},
+      {ja:'羽間',    en:'Hama'},
+      {ja:'琴電琴平',en:'Kotoden-Kotohira'},
+    ]
+  },
+  nagao: {
+    name: 'ことでん 長尾線', nameShort: '長尾線',
+    romaji: 'Nagao Line', color: '#CC0000',
+    stations: [
+      {ja:'高松築港',  en:'Takamatsu-Chikko'},
+      {ja:'片原町',    en:'Katahara-machi'},
+      {ja:'瓦町',      en:'Kawara-machi'},
+      {ja:'花園',      en:'Hanazono'},
+      {ja:'林道',      en:'Hayashimichi'},
+      {ja:'木太東口',  en:'Kita-Higashiguchi'},
+      {ja:'農学部前',  en:'Nogakubu-mae'},
+      {ja:'平木',      en:'Hiraki'},
+      {ja:'白山',      en:'Shiroyama'},
+      {ja:'水田',      en:'Mizuta'},
+      {ja:'井戸',      en:'Ido'},
+      {ja:'学園通り',  en:'Gakuen-dori'},
+      {ja:'高田',      en:'Takada'},
+      {ja:'讃州井野',  en:'Sanshū-Ino'},
+      {ja:'長尾',      en:'Nagao'},
+    ]
+  },
+  shido: {
+    name: 'ことでん 志度線', nameShort: '志度線',
+    romaji: 'Shido Line', color: '#007A3D',
+    stations: [
+      {ja:'瓦町',        en:'Kawara-machi'},
+      {ja:'今橋',        en:'Imabashi'},
+      {ja:'松島二丁目',  en:'Matsushima-nichome'},
+      {ja:'沖松島',      en:'Oki-Matsushima'},
+      {ja:'春日川',      en:'Kasugagawa'},
+      {ja:'潟元',        en:'Katamoto'},
+      {ja:'琴電屋島',    en:'Kotoden-Yashima'},
+      {ja:'古高松南',    en:'Furu-Takamatsu-Minami'},
+      {ja:'八栗口',      en:'Yakuri-guchi'},
+      {ja:'大町',        en:'Omachi'},
+      {ja:'八栗',        en:'Yakuri'},
+      {ja:'六万寺',      en:'Rokumaji'},
+      {ja:'原',          en:'Hara'},
+      {ja:'琴電志度',    en:'Kotoden-Shido'},
+    ]
+  }
+};
+
+// ── STATE ──
+let state = {
+  line: 'kotohira',
+  currentIdx: 0,
+  direction: 1, // 1=forward, -1=reverse
+  trainType: '普通',
+  doorSide: 'left',
+  ticker: '本日もことでんをご利用いただきありがとうございます。安全のため、発車時には必ず手すりや吊り革をお持ちください。'
+};
+
+// ── CLOCK ──
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('timeDisplay').textContent = `${hh}:${mm}:${ss}`;
+  document.getElementById('idleTime').textContent = `${hh}:${mm}`;
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('dateDisplay').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${days[now.getDay()]}）`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── RENDER LCD ──
+function renderLCD() {
+  const line = LINES[state.line];
+  const sts = state.direction === 1 ? line.stations : [...line.stations].reverse();
+  const cur = state.currentIdx;
+  const nextIdx = cur + 1;
+  const dest = sts[sts.length - 1];
+  const nextSt = sts[nextIdx] || null;
+
+  // Colors
+  document.documentElement.style.setProperty('--line-color', line.color);
+
+  // Line bar
+  document.getElementById('lineName').textContent = line.name;
+  document.getElementById('trainType').textContent = state.trainType;
+  document.getElementById('destArrow').textContent = `▶ ${dest.ja} 行き`;
+  document.getElementById('lineBar').style.background = line.color;
+
+  // Next station
+  if (nextSt) {
+    document.getElementById('nextJa').textContent = nextSt.ja;
+    document.getElementById('nextEn').textContent = nextSt.en;
+  } else {
+    document.getElementById('nextJa').textContent = '終点';
+    document.getElementById('nextEn').textContent = 'Terminal';
+  }
+
+  // Door side
+  const doorEl = document.getElementById('doorSideEl');
+  doorEl.style.display = 'flex';
+  document.getElementById('doorSideText').textContent =
+    state.doorSide === 'left' ? '左側のドアが開きます' :
+    state.doorSide === 'right' ? '右側のドアが開きます' : 'ドアにご注意ください';
+
+  // Destination
+  document.getElementById('destJa').textContent = dest.ja;
+  document.getElementById('destEn').textContent = dest.en;
+
+  // Route map
+  renderRouteMap(sts, cur);
+
+  // Route info
+  const remaining = sts.length - 1 - cur;
+  document.getElementById('routeInfo').textContent =
+    `現在地: ${sts[cur].ja} ／ あと ${remaining} 駅`;
+
+  // Ticker label color
+  document.getElementById('tickerLabel').style.color = line.color;
+
+  // Ticker
+  document.getElementById('tickerInner').textContent = state.ticker;
+}
+
+function renderRouteMap(sts, cur) {
+  const track = document.getElementById('routeTrack');
+  track.innerHTML = '';
+  sts.forEach((st, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'st-wrap';
+
+    const dot = document.createElement('div');
+    dot.className = 'st-dot';
+    if (i === cur) dot.classList.add('current');
+    else if (i === cur + 1) dot.classList.add('next-st');
+    else if (i < cur) dot.classList.add('passed');
+
+    const label = document.createElement('div');
+    label.className = 'st-name-small';
+    if (i === cur) label.classList.add('current');
+    else if (i === cur + 1) label.classList.add('next-st');
+    else if (i < cur) label.classList.add('passed');
+    label.textContent = st.ja;
+
+    wrap.appendChild(dot);
+    if (i < sts.length - 1) {
+      const line = document.createElement('div');
+      line.className = 'st-line' + (i < cur ? ' passed' : '');
+      wrap.appendChild(line);
+    }
+    wrap.appendChild(label);
+    track.appendChild(wrap);
+  });
+
+  // scroll current station into view
+  setTimeout(() => {
+    const dots = track.querySelectorAll('.st-dot');
+    if (dots[cur]) dots[cur].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  }, 100);
+}
+
+// ── DOOR ANIMATION ── 
+function doDoor(action) {
+  const ov = document.getElementById('doorOverlay');
+  if (action === 'open') {
+    ov.className = 'door-overlay closed';
+    setTimeout(() => { ov.className = 'door-overlay open'; }, 100);
+    playChime('open');
+  } else {
+    ov.className = 'door-overlay closed';
+    playChime('close');
+    setTimeout(() => { ov.className = 'door-overlay'; }, 700);
+  }
+}
+
+// ── CHIME ──
+function playChime(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = type === 'open'
+      ? [{f:523,t:0},{f:659,t:0.15},{f:784,t:0.3}]
+      : [{f:784,t:0},{f:659,t:0.15},{f:523,t:0.3}];
+    notes.forEach(({f,t}) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.frequency.value = f;
+      osc.type = 'sine';
+      g.gain.setValueAtTime(0.2, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.35);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.35);
+    });
+  } catch {}
+}
+
+// ── TTS ──
+function speak(text) {
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP'; u.rate = 0.88; u.pitch = 1.0; u.volume = 1.0;
+    speechSynthesis.speak(u);
+  } catch {}
+}
+
+// ── MESSAGE HANDLER ──
+function handleMsg(data) {
+  if (data.type === 'station') {
+    state.line      = data.line      || state.line;
+    state.currentIdx= data.currentIdx ?? state.currentIdx;
+    state.direction = data.direction  ?? state.direction;
+    state.trainType = data.trainType  || state.trainType;
+    state.doorSide  = data.doorSide   || state.doorSide;
+    if (data.ticker) state.ticker = data.ticker;
+    showLCD();
+    renderLCD();
+    if (data.announce) speak(data.announce);
+  } else if (data.type === 'door') {
+    doDoor(data.action);
+    if (data.announce) speak(data.announce);
+  } else if (data.type === 'announce') {
+    speak(data.text);
+  } else if (data.type === 'ticker') {
+    state.ticker = data.text;
+    document.getElementById('tickerInner').textContent = data.text;
+  } else if (data.type === 'trainType') {
+    state.trainType = data.value;
+    document.getElementById('trainType').textContent = data.value;
+  } else if (data.type === 'idle') {
+    showIdle();
+  }
+}
+
+function showLCD() {
+  document.getElementById('lcdMain').style.display = 'flex';
+  document.getElementById('idleScreen').style.display = 'none';
+}
+function showIdle() {
+  document.getElementById('lcdMain').style.display = 'none';
+  document.getElementById('idleScreen').style.display = 'flex';
+}
+
+// ── PEERJS ──
+const params = new URLSearchParams(location.search);
+const hostId = params.get('h');
+
+if (!hostId) {
+  document.getElementById('connMsg').textContent = '';
+  document.getElementById('connErr').style.display = 'block';
+  document.getElementById('connErr').textContent =
+    '操作盤のQRコードをスキャンして接続してください。\n（URLにホストIDが必要です）';
+} else {
+  initPeer();
+}
+
+function initPeer() {
+  document.getElementById('connMsg').textContent = '操作盤に接続中...';
+  const peer = new Peer({ debug: 0 });
+  peer.on('open', () => {
+    const conn = peer.connect(hostId);
+    conn.on('open', () => {
+      document.getElementById('connecting').style.display = 'none';
+      showIdle();
+    });
+    conn.on('data', (d) => handleMsg(d));
+    conn.on('close', () => {
+      document.getElementById('connecting').style.display = 'flex';
+      document.getElementById('connMsg').textContent = '接続が切れました。再接続中...';
+      setTimeout(initPeer, 3000);
+    });
+    conn.on('error', (e) => {
+      document.getElementById('connErr').style.display = 'block';
+      document.getElementById('connErr').textContent = 'エラー: ' + e;
+    });
+  });
+  peer.on('error', (e) => {
+    document.getElementById('connMsg').textContent = '';
+    document.getElementById('connErr').style.display = 'block';
+    document.getElementById('connErr').textContent =
+      e.type === 'peer-unavailable'
+        ? '操作盤が見つかりません。操作盤を起動してから再度QRをスキャンしてください。'
+        : 'エラー: ' + e.type;
+  });
+}
+</script>
+</body>
+</html>
