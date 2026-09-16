@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>お会計</title>
+<title>レジ操作</title>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
 <style>
   :root {
     --bg: #14181c; --panel: #1b2126; --panel-alt: #20272d; --border: #313a41;
@@ -12,155 +14,112 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:'Hiragino Sans',sans-serif; padding:20px 14px 60px; }
-  .wrap { max-width:480px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
-  h1 { font-size:18px; margin:0; }
+  .wrap { max-width:600px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+  h1 { font-size:19px; margin:0; }
   .panel { border:1px solid var(--border); background:var(--panel); border-radius:6px; padding:16px; display:flex; flex-direction:column; gap:10px; }
   .banner { font-size:12px; padding:9px 11px; border-radius:5px; border-left:3px solid var(--red); background:rgba(226,96,79,0.1); }
   .banner--info { border-left-color:var(--teal); background:rgba(79,209,197,0.08); }
   .guide { background:var(--panel-alt); border:1px solid var(--border); border-radius:5px; padding:12px 14px; font-size:13px; line-height:1.9; }
-  textarea, input[type=text] { width:100%; background:var(--panel-alt); border:1px solid var(--border); color:var(--text); padding:9px; border-radius:5px; font-size:14px; font-family:monospace; }
-  .btn { font-family:'Hiragino Sans',sans-serif; font-size:13px; padding:10px 16px; border-radius:5px; border:1px solid var(--border); background:var(--panel-alt); color:var(--text); cursor:pointer; }
+  input[type=text], input[type=number] { width:100%; background:var(--panel-alt); border:1px solid var(--border); color:var(--text); padding:9px; border-radius:5px; font-size:14px; }
+  .btn { font-family:inherit; font-size:13px; padding:10px 16px; border-radius:5px; border:1px solid var(--border); background:var(--panel-alt); color:var(--text); cursor:pointer; }
   .btn--primary { background:var(--amber); color:#1b1508; border-color:var(--amber); font-weight:600; width:100%; }
   .btn--ghost { background:transparent; }
+  .btn--danger { background:transparent; color:var(--red); border-color:var(--red); }
   .file-label { display:inline-block; text-align:center; }
   .qr-holder { background:#fff; border-radius:8px; padding:12px; display:flex; justify-content:center; }
   .qr-holder svg { width:100%; max-width:280px; height:auto; }
   .fallback { font-size:12px; color:var(--text-dim); }
   .fallback summary { cursor:pointer; padding:4px 0; }
 
-  .qr-modal { position:fixed; inset:0; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; }
-  .qr-modal__inner { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:10px; max-width:340px; width:100%; }
-  .qr-modal__inner video { width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:8px; background:#000; }
+  .camera-wrap { position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--border); background:#000; aspect-ratio:4/3; }
+  .camera-wrap video { width:100%; height:100%; object-fit:cover; }
+  .scan-frame { position:absolute; inset:20% 10%; border:3px dashed rgba(255,255,255,0.6); border-radius:8px; pointer-events:none; }
 
-  /* --- 買い物中の表示 --- */
-  .cart-view { display:none; flex-direction:column; gap:14px; }
-  .cart-row { display:flex; align-items:center; padding:9px 0; border-bottom:1px solid #262e34; font-size:16px; }
+  .row { display:flex; gap:8px; }
+  .row input:nth-child(2) { width:90px; flex-shrink:0; }
+
+  .cart-row { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid #262e34; font-size:14px; }
   .cart-row .name { flex:1; }
-  .total-big { font-size:26px; font-weight:800; text-align:right; }
+  .cart-row .price { color:var(--text-dim); width:70px; text-align:right; }
+  .cart-row button { background:transparent; border:none; color:var(--red); cursor:pointer; font-size:16px; }
+  .total { font-size:18px; font-weight:800; text-align:right; }
 
-  /* --- 会計画面 --- */
-  .pay-view { display:none; flex-direction:column; gap:16px; align-items:center; text-align:center; }
-  .pay-view .total-huge { font-size:40px; font-weight:900; color:var(--amber); }
-  .pay-btn { width:100%; font-size:16px; padding:16px; border-radius:8px; border:1px solid var(--border); background:var(--panel-alt); color:var(--text); cursor:pointer; font-weight:700; }
-  .pay-done { font-size:18px; }
+  .payment-status { font-size:14px; padding:10px; background:var(--panel-alt); border-radius:5px; text-align:center; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🛒 お会計</h1>
+  <h1>🧾 レジ操作（タブレット）</h1>
+  <div id="setupBanner" class="banner" hidden></div>
 
   <div id="connectPanel" class="panel">
-    <div id="setupBanner" class="banner" hidden></div>
     <div class="guide">
       <strong>使い方</strong><br>
-      ① レジ側の画面のQRコードを「QRを読み取る」で読み取る（または貼り付け）<br>
-      ② 自動でコードが作られるので、それをレジ側に送り返す
+      ① 「連携コードを作る」を押す<br>
+      ② 出てきたQRコードを、お客様用のスマホで読み取ってもらう<br>
+      ③ スマホから届いた返事のコードを貼り付けて「接続する」
     </div>
     <div id="step1">
-      <button id="scanOffer" class="btn btn--primary">📷 QRを読み取る</button>
-      <label class="btn btn--ghost file-label" style="margin-top:8px; display:block;">
-        📁 ファイルを読み込む
-        <input type="file" id="loadOfferFile" accept=".txt,text/plain,*/*" hidden>
-      </label>
-      <details class="fallback">
-        <summary>QRもファイルも使えない場合（テキストを貼り付け）</summary>
-        <textarea id="offerInput" placeholder="レジ側のコードを貼り付け" style="height:64px;"></textarea>
-      </details>
-      <button id="startJoin" class="btn btn--primary" style="margin-top:8px;">貼り付けたらコードを作る</button>
+      <button id="startHost" class="btn btn--primary">連携コードを作る</button>
     </div>
     <div id="step2" hidden>
-      <div class="qr-holder" id="answerQr"></div>
-      <button id="saveAnswerFile" class="btn btn--ghost" style="margin-top:8px;">💾 ファイルで保存して送る</button>
+      <div class="qr-holder" id="offerQr"></div>
+      <button id="saveOfferFile" class="btn btn--ghost" style="margin-top:8px;">💾 ファイルで保存して送る</button>
       <details class="fallback">
         <summary>QRもファイルも使えない場合（テキストをコピー）</summary>
         <div style="display:flex; gap:8px;">
-          <textarea id="answerCode" readonly style="height:64px;"></textarea>
-          <button id="copyAnswer" class="btn btn--ghost">コピー</button>
+          <textarea id="offerCode" readonly style="height:64px;"></textarea>
+          <button id="copyOffer" class="btn btn--ghost">コピー</button>
         </div>
       </details>
     </div>
+    <div id="step3" hidden style="margin-top:10px;">
+      <label class="btn btn--ghost file-label" style="display:block;">
+        📁 ファイルを読み込む
+        <input type="file" id="loadAnswerFile" accept=".txt,text/plain,*/*" hidden>
+      </label>
+      <textarea id="answerInput" placeholder="お客様側からの返事のコードを貼り付け" style="height:64px; margin-top:8px;"></textarea>
+      <button id="connectHost" class="btn btn--primary" style="margin-top:8px;">接続する</button>
+    </div>
   </div>
 
-  <div id="cartView" class="cart-view">
+  <div id="registerPanel" style="display:none; flex-direction:column; gap:14px;">
     <div class="panel">
-      <p style="font-size:13px; color:var(--text-dim);">スキャンされた商品がここに表示されます</p>
-      <div id="cartRows"></div>
-      <div class="total-big" id="cartTotalBig">0円</div>
-    </div>
-  </div>
-
-  <div id="payView" class="pay-view">
-    <div class="panel" style="width:100%; align-items:center; display:flex; flex-direction:column; gap:16px;">
-      <div style="font-size:14px; color:var(--text-dim);">お支払い金額</div>
-      <div class="total-huge" id="payTotal">0円</div>
-      <button class="pay-btn" data-method="現金">💴 現金</button>
-      <button class="pay-btn" data-method="クレジットカード">💳 クレジットカード</button>
-      <button class="pay-btn" data-method="電子マネー">📱 電子マネー</button>
-    </div>
-  </div>
-
-  <div id="cashView" class="pay-view">
-    <div class="panel" style="width:100%; align-items:center; display:flex; flex-direction:column; gap:12px;">
-      <div style="font-size:13px; color:var(--text-dim);">お支払い金額 <span id="cashTotalRef"></span></div>
-      <div style="font-size:13px; color:var(--text-dim);">お預かり金額</div>
-      <div class="total-huge" id="cashEntered">0円</div>
-      <div id="cashChangeText" style="font-size:15px; color:var(--teal);"></div>
-      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:100%;">
-        <button class="pay-btn keypad-btn" data-k="1">1</button>
-        <button class="pay-btn keypad-btn" data-k="2">2</button>
-        <button class="pay-btn keypad-btn" data-k="3">3</button>
-        <button class="pay-btn keypad-btn" data-k="4">4</button>
-        <button class="pay-btn keypad-btn" data-k="5">5</button>
-        <button class="pay-btn keypad-btn" data-k="6">6</button>
-        <button class="pay-btn keypad-btn" data-k="7">7</button>
-        <button class="pay-btn keypad-btn" data-k="8">8</button>
-        <button class="pay-btn keypad-btn" data-k="9">9</button>
-        <button class="pay-btn keypad-btn" data-k="00">00</button>
-        <button class="pay-btn keypad-btn" data-k="0">0</button>
-        <button class="pay-btn keypad-btn" id="cashClear">C</button>
+      <button id="scanBarcode" class="btn btn--primary">📷 バーコードをスキャン</button>
+      <div class="camera-wrap" id="cameraWrap" hidden>
+        <video id="scanVideo" playsinline muted autoplay></video>
+        <div class="scan-frame"></div>
       </div>
-      <button class="pay-btn" id="cashConfirm" style="background:var(--amber); color:#1b1508; border-color:var(--amber);">この金額でお支払い</button>
-      <button class="btn btn--ghost" id="cashBack">戻る</button>
+      <canvas id="scanCanvas" hidden></canvas>
+      <button id="scanSwitchCamera" class="btn btn--ghost" hidden>🔄 カメラ切替</button>
+      <button id="stopScan" class="btn btn--ghost" hidden>スキャンを止める</button>
     </div>
-  </div>
 
-  <div id="cardTouchView" class="pay-view">
-    <div class="panel" style="width:100%; align-items:center; display:flex; flex-direction:column; gap:16px;">
-      <div class="total-huge" id="cardTotal">0円</div>
-      <div id="cardTouchIcon" style="font-size:70px;">💳</div>
-      <div id="cardTouchText" style="font-size:16px;">カードをタッチしてください</div>
-      <button class="pay-btn" id="cardTouchBtn" style="background:var(--teal); color:#04302c; border-color:var(--teal);">タッチする</button>
-      <button class="btn btn--ghost" id="cardBack">戻る</button>
+    <div class="panel">
+      <div style="font-size:12px; color:var(--text-dim);">手入力で追加</div>
+      <div class="row">
+        <input type="text" id="manualNameInput" placeholder="商品名">
+        <input type="number" id="manualPriceInput" placeholder="値段">
+      </div>
+      <button id="manualAddBtn" class="btn btn--ghost">＋ カートに追加</button>
     </div>
-  </div>
 
-  <div id="emoneyView" class="pay-view">
-    <div class="panel" style="width:100%; align-items:center; display:flex; flex-direction:column; gap:12px;">
-      <div class="total-huge" id="emoneyTotal">0円</div>
-      <div style="font-size:13px; color:var(--text-dim);">このQRをレジ側に読み取ってもらってください</div>
-      <div class="qr-holder" id="emoneyQr"></div>
-      <div id="emoneyStatusText" style="font-size:13px; color:var(--text-dim);"></div>
-      <button class="btn btn--ghost" id="emoneyBack">戻る</button>
+    <div class="panel">
+      <div id="cartList"></div>
+      <div class="total" id="cartTotal">合計 0円</div>
+      <button id="checkoutBtn" class="btn btn--primary">会計へ進む</button>
     </div>
-  </div>
 
-  <div id="doneView" class="pay-view">
-    <div class="panel" style="width:100%; align-items:center; display:flex; flex-direction:column; gap:10px;">
-      <div class="pay-done">お支払いが完了しました</div>
-      <div id="doneMethodText" style="color:var(--text-dim); font-size:14px;"></div>
-      <div style="font-size:22px;">ありがとうございました🙇</div>
+    <div class="panel" id="paymentWaitPanel" hidden>
+      <div class="payment-status" id="paymentStatusText">お客様の支払い方法選択を待っています…</div>
+      <button id="emoneyScanBtn" class="btn btn--primary" hidden>📱 電子マネーを読み取る</button>
+      <button id="cancelCheckoutBtn" class="btn btn--ghost">会計をキャンセルして戻る</button>
     </div>
-  </div>
-</div>
 
-<div id="qrScanModal" class="qr-modal" hidden>
-  <div class="qr-modal__inner">
-    <p style="font-size:13px; font-weight:600; margin:0;">QRコードを枠内に映してください</p>
-    <video id="qrScanVideo" playsinline muted autoplay></video>
-    <canvas id="qrScanCanvas" hidden></canvas>
-    <div id="qrScanBanner" class="banner" hidden></div>
-    <button id="qrSwitchCamera" class="btn btn--ghost" hidden>🔄 カメラ切替</button>
-    <button id="qrScanCancel" class="btn btn--ghost">キャンセル</button>
+    <div class="panel" id="paymentDonePanel" hidden>
+      <div class="payment-status" id="paymentDoneText"></div>
+      <button id="nextCustomerBtn" class="btn btn--primary">次のお客様へ</button>
+    </div>
   </div>
 </div>
 
@@ -12599,6 +12558,20 @@ const STUN_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 let pc = null;
 let dc = null;
 
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDBbV89C3tLId929jyK2Ay97BYISkNeOBg",
+  authDomain: "tsuusinkikai-comm-tool.firebaseapp.com",
+  databaseURL: "https://tsuusinkikai-comm-tool-default-rtdb.firebaseio.com",
+  projectId: "tsuusinkikai-comm-tool",
+  storageBucket: "tsuusinkikai-comm-tool.firebasestorage.app",
+  messagingSenderId: "632458639323",
+  appId: "1:632458639323:web:22b7a3e1aae983d6c959fe"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
+let products = {};
+db.ref('register_products').on('value', (snap) => { products = snap.val() || {}; });
+
 function showBanner(el, msg, type) {
   el.textContent = msg;
   el.hidden = false;
@@ -12718,44 +12691,48 @@ function downloadTextFile(filename, text) {
   URL.revokeObjectURL(url);
 }
 
-// ---- 接続処理（このページは参加者役） ----
-document.getElementById('startJoin').addEventListener('click', async () => {
+// ---- 接続処理（このページがホスト） ----
+document.getElementById('startHost').addEventListener('click', async () => {
   try {
-    const code = document.getElementById('offerInput').value;
-    if (!code) return showBanner(document.getElementById('setupBanner'), 'レジ側のコードを貼り付けてください。');
     hideBanner(document.getElementById('setupBanner'));
-
     pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
-    pc.ondatachannel = (e) => {
-      dc = e.channel;
-      dc.onopen = () => {
-        document.getElementById('connectPanel').style.display = 'none';
-        document.getElementById('cartView').style.display = 'flex';
-      };
-      dc.onmessage = (e2) => {
-        try { handleCashierMessage(JSON.parse(e2.data)); } catch (err) {}
-      };
+    dc = pc.createDataChannel('register');
+    dc.onopen = () => {
+      document.getElementById('connectPanel').style.display = 'none';
+      document.getElementById('registerPanel').style.display = 'flex';
+      sendCart();
+    };
+    dc.onmessage = (e) => {
+      try { handleCustomerMessage(JSON.parse(e.data)); } catch (err) {}
     };
 
-    const offer = await decodeDescription(code);
-    await pc.setRemoteDescription(offer);
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
     await waitForIceGathering(pc);
-
-    const answerCode = await encodeDescription(pc.localDescription);
-    document.getElementById('answerCode').value = answerCode;
-    renderQrInto('answerQr', answerCode);
+    const code = await encodeDescription(pc.localDescription);
+    document.getElementById('offerCode').value = code;
+    renderQrInto('offerQr', code);
     document.getElementById('step1').hidden = true;
     document.getElementById('step2').hidden = false;
-    showBanner(document.getElementById('setupBanner'), 'コードができました。レジ側に送ってください。', 'info');
+    document.getElementById('step3').hidden = false;
   } catch (err) {
     showBanner(document.getElementById('setupBanner'), '準備に失敗しました: ' + err.message);
   }
 });
 
-document.getElementById('copyAnswer').addEventListener('click', async (e) => {
-  const v = document.getElementById('answerCode').value;
+document.getElementById('connectHost').addEventListener('click', async () => {
+  try {
+    const code = document.getElementById('answerInput').value;
+    if (!code) return showBanner(document.getElementById('setupBanner'), 'お客様側からの返事のコードを貼り付けてください。');
+    await pc.setRemoteDescription(await decodeDescription(code));
+    showBanner(document.getElementById('setupBanner'), '接続処理中です…', 'info');
+  } catch (err) {
+    showBanner(document.getElementById('setupBanner'), '接続に失敗しました。コードをご確認ください。');
+  }
+});
+
+document.getElementById('copyOffer').addEventListener('click', async (e) => {
+  const v = document.getElementById('offerCode').value;
   if (!v) return;
   try {
     await navigator.clipboard.writeText(v);
@@ -12763,65 +12740,242 @@ document.getElementById('copyAnswer').addEventListener('click', async (e) => {
     setTimeout(() => { e.target.textContent = 'コピー'; }, 1200);
   } catch { alert('コピーできませんでした。手動で選択してコピーしてください。'); }
 });
-document.getElementById('saveAnswerFile').addEventListener('click', () => {
-  const v = document.getElementById('answerCode').value;
-  if (v) downloadTextFile('customer-answer-code.txt', v);
+document.getElementById('saveOfferFile').addEventListener('click', () => {
+  const v = document.getElementById('offerCode').value;
+  if (v) downloadTextFile('register-invite-code.txt', v);
 });
-document.getElementById('loadOfferFile').addEventListener('change', (e) => {
+document.getElementById('loadAnswerFile').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    const target = document.getElementById('offerInput');
-    target.value = reader.result.trim();
-    const details = target.closest('details');
-    if (details) details.open = true;
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('answerInput').value = reader.result.trim();
   };
   reader.readAsText(file);
   e.target.value = '';
 });
 
-// ---- QRスキャン（外カメラ優先、手動切替あり） ----
-let qrScanStream = null;
-let qrScanDevices = [];
-let qrScanDeviceIndex = 0;
-let qrScanning = false;
+// ---- カメラ共通（バーコード・電子マネー両方のスキャンで使い回す） ----
+let scanStream = null;
+let scanDevices = [];
+let scanDeviceIndex = 0;
+let activeScanMode = null; // 'barcode' | 'emoney'
 
-async function listCameras() {
+async function listScanCameras() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    qrScanDevices = devices.filter(d => d.kind === 'videoinput');
-  } catch (e) { qrScanDevices = []; }
+    scanDevices = devices.filter(d => d.kind === 'videoinput');
+  } catch (e) { scanDevices = []; }
 }
-async function startQrStream(deviceId) {
+async function startCameraStream(deviceId) {
   const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: 'environment' } } };
   const stream = await navigator.mediaDevices.getUserMedia(constraints);
-  qrScanStream = stream;
-  const video = document.getElementById('qrScanVideo');
+  scanStream = stream;
+  const video = document.getElementById('scanVideo');
   video.srcObject = stream;
   await video.play();
-  qrScanning = true;
-  requestAnimationFrame(qrScanTick);
 }
-async function openQrScanner() {
-  const modal = document.getElementById('qrScanModal');
-  const banner = document.getElementById('qrScanBanner');
-  banner.hidden = true;
-  modal.hidden = false;
-  await listCameras();
-  qrScanDeviceIndex = 0;
-  document.getElementById('qrSwitchCamera').hidden = qrScanDevices.length < 2;
+function switchScanCamera() {
+  if (scanDevices.length < 2) return;
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  scanDeviceIndex = (scanDeviceIndex + 1) % scanDevices.length;
+  const device = scanDevices[scanDeviceIndex];
+  setTimeout(async () => {
+    try {
+      await startCameraStream(device.deviceId);
+      if (activeScanMode === 'barcode') { scanning = true; scanTick(); }
+      else if (activeScanMode === 'emoney') { emoneyScanning = true; emoneyScanTick(); }
+    } catch (err) {
+      showBanner(document.getElementById('setupBanner'), describeMediaError(err));
+    }
+  }, 350);
+}
+document.getElementById('scanSwitchCamera').addEventListener('click', switchScanCamera);
+
+// ---- バーコードスキャン ----
+let scanning = false;
+let barcodeDetector = null;
+
+async function startScan() {
+  if (!('BarcodeDetector' in window)) {
+    showBanner(document.getElementById('setupBanner'), 'このブラウザはバーコード読み取りに対応していません。手入力をご利用ください（Chrome AndroidかSamsung Internetをお試しください）。');
+    return;
+  }
   try {
-    await startQrStream();
+    barcodeDetector = new BarcodeDetector();
+    activeScanMode = 'barcode';
+    await listScanCameras();
+    scanDeviceIndex = 0;
+    document.getElementById('scanSwitchCamera').hidden = scanDevices.length < 2;
+    await startCameraStream();
+    document.getElementById('cameraWrap').hidden = false;
+    document.getElementById('stopScan').hidden = false;
+    scanning = true;
+    scanTick();
   } catch (err) {
-    showBanner(banner, describeMediaError(err));
+    showBanner(document.getElementById('setupBanner'), describeMediaError(err));
   }
 }
-function qrScanTick() {
-  if (!qrScanning) return;
-  const video = document.getElementById('qrScanVideo');
-  const canvas = document.getElementById('qrScanCanvas');
+let lastBarcodeValue = null;
+let lastBarcodeTime = 0;
+async function scanTick() {
+  if (!scanning) return;
+  const video = document.getElementById('scanVideo');
+  try {
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      const codes = await barcodeDetector.detect(video);
+      if (codes.length) {
+        const value = codes[0].rawValue;
+        const now = Date.now();
+        if (value !== lastBarcodeValue || now - lastBarcodeTime > 2500) {
+          lastBarcodeValue = value;
+          lastBarcodeTime = now;
+          handleScannedBarcode(value);
+        }
+      }
+    }
+  } catch (e) { /* 一時的な検出失敗は無視 */ }
+  requestAnimationFrame(scanTick);
+}
+function stopScan() {
+  scanning = false;
+  emoneyScanning = false;
+  activeScanMode = null;
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  document.getElementById('cameraWrap').hidden = true;
+  document.getElementById('stopScan').hidden = true;
+  document.getElementById('scanSwitchCamera').hidden = true;
+}
+document.getElementById('scanBarcode').addEventListener('click', startScan);
+document.getElementById('stopScan').addEventListener('click', stopScan);
+
+async function handleScannedBarcode(code) {
+  const item = products[code];
+  if (item) {
+    hideBanner(document.getElementById('setupBanner'));
+    addToCart(item.name, item.price);
+    return;
+  }
+  // 自分の商品リストに無い場合、Open Food Facts（無料・登録不要の商品データベース）で商品名だけ自動取得を試みる
+  showBanner(document.getElementById('setupBanner'), '商品情報を検索中…（' + code + '）', 'info');
+  try {
+    const res = await fetch('https://world.openfoodfacts.org/api/v2/product/' + encodeURIComponent(code) + '.json');
+    const data = await res.json();
+    if (data && data.status === 1 && data.product && data.product.product_name) {
+      document.getElementById('manualNameInput').value = data.product.product_name;
+      document.getElementById('manualPriceInput').focus();
+      showBanner(document.getElementById('setupBanner'), '商品名を見つけました。値段を入力して追加してください（' + code + '）。', 'info');
+      return;
+    }
+  } catch (e) { /* ネットワークエラーやCORSで失敗した場合は下の手入力案内にフォールバック */ }
+  showBanner(document.getElementById('setupBanner'), '商品情報が見つかりませんでした（' + code + '）。商品名・値段を手入力して追加してください。');
+  document.getElementById('manualNameInput').focus();
+}
+
+// ---- カート ----
+let cart = []; // { name, price }
+document.getElementById('manualAddBtn').addEventListener('click', () => {
+  const name = document.getElementById('manualNameInput').value.trim();
+  const price = parseInt(document.getElementById('manualPriceInput').value, 10) || 0;
+  if (!name) return;
+  addToCart(name, price);
+  document.getElementById('manualNameInput').value = '';
+  document.getElementById('manualPriceInput').value = '';
+});
+
+function addToCart(name, price) {
+  cart.push({ name, price });
+  renderCart();
+  sendCart();
+}
+function renderCart() {
+  const el = document.getElementById('cartList');
+  if (!cart.length) {
+    el.innerHTML = '<p style="color:var(--text-dim); font-size:13px;">まだ何もありません。</p>';
+  } else {
+    el.innerHTML = cart.map((it, i) =>
+      '<div class="cart-row"><span class="name">' + escapeHtml(it.name) + '</span><span class="price">' + it.price + '円</span><button data-i="' + i + '">✕</button></div>'
+    ).join('');
+    el.querySelectorAll('button[data-i]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        cart.splice(parseInt(btn.dataset.i, 10), 1);
+        renderCart();
+        sendCart();
+      });
+    });
+  }
+  const total = cart.reduce((s, it) => s + it.price, 0);
+  document.getElementById('cartTotal').textContent = '合計 ' + total + '円';
+}
+
+function send(payload) {
+  if (dc && dc.readyState === 'open') dc.send(JSON.stringify(payload));
+}
+function sendCart() {
+  const total = cart.reduce((s, it) => s + it.price, 0);
+  send({ type: 'cart', items: cart, total });
+}
+
+let currentCheckoutTotal = 0;
+document.getElementById('checkoutBtn').addEventListener('click', () => {
+  if (!cart.length) return showBanner(document.getElementById('setupBanner'), 'カートが空です。');
+  const total = cart.reduce((s, it) => s + it.price, 0);
+  currentCheckoutTotal = total;
+  send({ type: 'checkout', total });
+  document.getElementById('paymentWaitPanel').hidden = false;
+  document.getElementById('emoneyScanBtn').hidden = true;
+  document.getElementById('paymentStatusText').textContent = 'お客様の支払い方法選択を待っています…';
+});
+
+document.getElementById('cancelCheckoutBtn').addEventListener('click', () => {
+  send({ type: 'cancel-checkout' });
+  document.getElementById('paymentWaitPanel').hidden = true;
+  stopScan();
+});
+
+document.getElementById('nextCustomerBtn').addEventListener('click', () => {
+  cart = [];
+  renderCart();
+  send({ type: 'reset' });
+  document.getElementById('paymentDonePanel').hidden = true;
+});
+
+function handleCustomerMessage(msg) {
+  if (msg.type === 'payment-selected') {
+    document.getElementById('paymentWaitPanel').hidden = true;
+    document.getElementById('paymentDonePanel').hidden = false;
+    let detail = '（合計 ' + msg.total + '円）';
+    if (msg.method === '現金') detail = '（お預かり ' + msg.received + '円 / お釣り ' + msg.change + '円）';
+    document.getElementById('paymentDoneText').textContent = '支払い方法: ' + msg.method + detail;
+  } else if (msg.type === 'emoney-selecting') {
+    document.getElementById('paymentStatusText').textContent = 'お客様が電子マネーを選択しました。下のボタンでQRを読み取ってください。';
+    document.getElementById('emoneyScanBtn').hidden = false;
+  }
+}
+
+// ---- 電子マネー（ICカード）の読み取りと残高処理 ----
+let emoneyScanning = false;
+document.getElementById('emoneyScanBtn').addEventListener('click', startEmoneyScan);
+
+async function startEmoneyScan() {
+  try {
+    activeScanMode = 'emoney';
+    await listScanCameras();
+    scanDeviceIndex = 0;
+    document.getElementById('scanSwitchCamera').hidden = scanDevices.length < 2;
+    await startCameraStream();
+    document.getElementById('cameraWrap').hidden = false;
+    document.getElementById('stopScan').hidden = false;
+    emoneyScanning = true;
+    emoneyScanTick();
+  } catch (err) {
+    showBanner(document.getElementById('setupBanner'), describeMediaError(err));
+  }
+}
+function emoneyScanTick() {
+  if (!emoneyScanning) return;
+  const video = document.getElementById('scanVideo');
+  const canvas = document.getElementById('scanCanvas');
   if (video.readyState === video.HAVE_ENOUGH_DATA) {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -12829,176 +12983,42 @@ function qrScanTick() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(imageData.data, imageData.width, imageData.height);
-    if (code && code.data && /^(GZ:|RAW:)/.test(code.data)) {
-      document.getElementById('offerInput').value = code.data;
-      closeQrScanner();
+    if (code && code.data && /^MC-[A-Z0-9]{8}$/.test(code.data)) {
+      emoneyScanning = false;
+      stopScan();
+      processEmoneyPayment(code.data);
       return;
     }
   }
-  requestAnimationFrame(qrScanTick);
+  requestAnimationFrame(emoneyScanTick);
 }
-function closeQrScanner() {
-  qrScanning = false;
-  if (qrScanStream) { qrScanStream.getTracks().forEach(t => t.stop()); qrScanStream = null; }
-  document.getElementById('qrScanModal').hidden = true;
-}
-function switchCamera() {
-  if (qrScanDevices.length < 2) return;
-  if (qrScanStream) { qrScanStream.getTracks().forEach(t => t.stop()); qrScanStream = null; }
-  qrScanDeviceIndex = (qrScanDeviceIndex + 1) % qrScanDevices.length;
-  const device = qrScanDevices[qrScanDeviceIndex];
-  setTimeout(() => {
-    startQrStream(device.deviceId).catch(err => {
-      showBanner(document.getElementById('qrScanBanner'), describeMediaError(err));
+
+async function processEmoneyPayment(cardId) {
+  const total = currentCheckoutTotal;
+  document.getElementById('paymentStatusText').textContent = '処理中…';
+  try {
+    const ref = db.ref('ic_card_ledger/' + cardId + '/balance');
+    const result = await ref.transaction(cur => {
+      const bal = cur || 0;
+      if (bal < total) return; // undefinedを返すと処理を中止する
+      return bal - total;
     });
-  }, 350);
-}
-document.getElementById('scanOffer').addEventListener('click', openQrScanner);
-document.getElementById('qrScanCancel').addEventListener('click', closeQrScanner);
-document.getElementById('qrSwitchCamera').addEventListener('click', switchCamera);
-
-// ---- レジ側からのメッセージ処理 ----
-let lastTotal = 0;
-
-function handleCashierMessage(msg) {
-  if (msg.type === 'cart') {
-    lastTotal = msg.total || 0;
-    renderCartRows(msg.items || [], msg.total || 0);
-  } else if (msg.type === 'checkout') {
-    lastTotal = msg.total || 0;
-    showPayView(msg.total || 0);
-  } else if (msg.type === 'cancel-checkout') {
-    showCartView();
-  } else if (msg.type === 'reset') {
-    showCartView();
-    renderCartRows([], 0);
-  } else if (msg.type === 'emoney-result') {
-    if (msg.ok) {
-      showDoneView('電子マネー（残高: ' + msg.balance + '円）');
-    } else {
-      document.getElementById('emoneyStatusText').textContent = msg.message || '支払いに失敗しました。';
-      document.getElementById('emoneyStatusText').style.color = 'var(--red)';
+    if (!result.committed) {
+      send({ type: 'emoney-result', ok: false, message: '残高不足です。' });
+      document.getElementById('paymentStatusText').textContent = '残高不足です。お客様に別の方法を選んでもらってください。';
+      document.getElementById('emoneyScanBtn').hidden = false;
+      return;
     }
+    const newBalance = result.snapshot.val();
+    send({ type: 'emoney-result', ok: true, balance: newBalance });
+    document.getElementById('paymentWaitPanel').hidden = true;
+    document.getElementById('paymentDonePanel').hidden = false;
+    document.getElementById('paymentDoneText').textContent = '支払い方法: 電子マネー（残高 ' + newBalance + '円）';
+  } catch (err) {
+    send({ type: 'emoney-result', ok: false, message: 'エラーが発生しました。' });
+    document.getElementById('paymentStatusText').textContent = '処理に失敗しました: ' + err.message;
   }
 }
-
-function renderCartRows(items, total) {
-  const el = document.getElementById('cartRows');
-  el.innerHTML = items.map(it =>
-    '<div class="cart-row"><span class="name">' + escapeHtml(it.name) + '</span><span>' + it.price + '円</span></div>'
-  ).join('') || '<p style="color:var(--text-dim); font-size:13px;">まだ何もありません</p>';
-  document.getElementById('cartTotalBig').textContent = total + '円';
-}
-
-const ALL_VIEWS = ['cartView', 'payView', 'cashView', 'cardTouchView', 'emoneyView', 'doneView'];
-function showView(id) {
-  ALL_VIEWS.forEach(v => { document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; });
-}
-function showCartView() { showView('cartView'); }
-function showPayView(total) {
-  showView('payView');
-  document.getElementById('payTotal').textContent = total + '円';
-}
-function showDoneView(method) {
-  showView('doneView');
-  document.getElementById('doneMethodText').textContent = 'お支払い方法: ' + method;
-}
-
-document.querySelectorAll('.pay-btn[data-method]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const method = btn.dataset.method;
-    if (method === '現金') { openCashView(); return; }
-    if (method === 'クレジットカード') { openCardTouchView(); return; }
-    if (method === '電子マネー') { openEmoneyView(); return; }
-  });
-});
-
-// ---- 現金：テンキーで預かり金額を入力し、お釣りを計算 ----
-let cashEnteredStr = '';
-function openCashView() {
-  cashEnteredStr = '';
-  updateCashDisplay();
-  document.getElementById('cashTotalRef').textContent = lastTotal + '円';
-  showView('cashView');
-}
-function updateCashDisplay() {
-  const entered = parseInt(cashEnteredStr || '0', 10);
-  document.getElementById('cashEntered').textContent = entered + '円';
-  const changeEl = document.getElementById('cashChangeText');
-  if (entered > 0 && entered >= lastTotal) {
-    changeEl.textContent = 'お釣り: ' + (entered - lastTotal) + '円';
-  } else {
-    changeEl.textContent = '';
-  }
-}
-document.querySelectorAll('.keypad-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (cashEnteredStr.length >= 7) return;
-    cashEnteredStr += btn.dataset.k;
-    updateCashDisplay();
-  });
-});
-document.getElementById('cashClear').addEventListener('click', () => {
-  cashEnteredStr = '';
-  updateCashDisplay();
-});
-document.getElementById('cashBack').addEventListener('click', () => showPayView(lastTotal));
-document.getElementById('cashConfirm').addEventListener('click', () => {
-  const entered = parseInt(cashEnteredStr || '0', 10);
-  if (entered < lastTotal) {
-    document.getElementById('cashChangeText').textContent = '金額が不足しています';
-    document.getElementById('cashChangeText').style.color = 'var(--red)';
-    return;
-  }
-  const change = entered - lastTotal;
-  if (dc && dc.readyState === 'open') {
-    dc.send(JSON.stringify({ type: 'payment-selected', method: '現金', total: lastTotal, received: entered, change }));
-  }
-  document.getElementById('doneMethodText').textContent = 'お預かり ' + entered + '円 / お釣り ' + change + '円';
-  showView('doneView');
-  document.getElementById('doneMethodText').style.display = 'block';
-});
-
-// ---- クレジットカード：タッチ演出 ----
-function openCardTouchView() {
-  document.getElementById('cardTotal').textContent = lastTotal + '円';
-  document.getElementById('cardTouchText').textContent = 'カードをタッチしてください';
-  document.getElementById('cardTouchIcon').textContent = '💳';
-  showView('cardTouchView');
-}
-document.getElementById('cardBack').addEventListener('click', () => showPayView(lastTotal));
-document.getElementById('cardTouchBtn').addEventListener('click', () => {
-  document.getElementById('cardTouchText').textContent = '処理中…';
-  document.getElementById('cardTouchIcon').textContent = '📶';
-  setTimeout(() => {
-    if (dc && dc.readyState === 'open') {
-      dc.send(JSON.stringify({ type: 'payment-selected', method: 'クレジットカード', total: lastTotal }));
-    }
-    showDoneView('クレジットカード（タッチ決済）');
-  }, 1200);
-});
-
-// ---- 電子マネー：ICカードのQRを表示し、レジ側に読み取ってもらう ----
-function getOrCreateCardId() {
-  let id = localStorage.getItem('mc_card_id');
-  if (!id) {
-    id = 'MC-' + Math.random().toString(36).slice(2, 6).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
-    localStorage.setItem('mc_card_id', id);
-  }
-  return id;
-}
-function openEmoneyView() {
-  document.getElementById('emoneyTotal').textContent = lastTotal + '円';
-  document.getElementById('emoneyStatusText').textContent = 'レジ側で読み取り待ちです…';
-  document.getElementById('emoneyStatusText').style.color = 'var(--text-dim)';
-  const cardId = getOrCreateCardId();
-  renderQrInto('emoneyQr', cardId);
-  if (dc && dc.readyState === 'open') {
-    dc.send(JSON.stringify({ type: 'emoney-selecting' }));
-  }
-  showView('emoneyView');
-}
-document.getElementById('emoneyBack').addEventListener('click', () => showPayView(lastTotal));
 </script>
 </body>
 </html>
