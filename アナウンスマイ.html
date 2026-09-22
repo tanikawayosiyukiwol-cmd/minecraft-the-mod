@@ -70,6 +70,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto S
 .send-btn{width:100%;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;transition:all .18s;}
 .send-btn:hover{opacity:.85;}
 .send-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* YOUTUBE AUDIO */
+.yt-url{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:14px;font-family:inherit;outline:none;}
+.yt-row{display:flex;gap:8px;margin-top:8px;}
+.yt-btn{flex:1;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.yt-btn.stop{background:#da3633;}
+.yt-status{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5;}
+.yt-player{margin-top:10px;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:#000;}
+.yt-player iframe{width:100%;height:100%;border:0;}
 </style>
 </head>
 <body>
@@ -102,6 +111,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto S
       <button class="send-btn" id="sendTextBtn" onclick="sendText()" disabled>📢 送信</button>
     </div>
 
+
+    <!-- YOUTUBE AUDIO -->
+    <div class="section">
+      <div class="section-title">YouTube音源配信</div>
+      <input class="yt-url" id="ytUrl" type="text"
+             placeholder="YouTube URLを貼り付け（例: https://www.youtube.com/watch?v=...）">
+      <div class="yt-row">
+        <button class="yt-btn" id="ytPlayBtn" onclick="playYouTube()" disabled>▶ 再生・配信</button>
+        <button class="yt-btn stop" id="ytStopBtn" onclick="stopYouTube()" disabled>■ 停止</button>
+      </div>
+      <div class="yt-status" id="ytStatus">YouTubeの動画をスピーカーへ配信できます。※YouTube側の再生制限により、音声そのものをPeerJS経由で直接転送する方式ではありません。</div>
+      <div class="yt-player" id="ytPlayerWrap" style="display:none;">
+        <iframe id="ytPlayer" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      </div>
+    </div>
+
     <!-- QR -->
     <div class="section">
       <div class="section-title">スピーカー接続QR</div>
@@ -126,6 +151,9 @@ let analyser = null;
 let micActive = false;
 let mode = 'ptt'; // 'ptt' | 'cont'
 let pttDown = false;
+let ytPlayer = null;
+let ytVideoId = null;
+let ytPlaying = false;
 
 // ── PEER SETUP ──
 function initPeer() {
@@ -146,6 +174,9 @@ function initPeer() {
     updateSpkList();
     // If mic is already live (continuous mode), call this new speaker
     if (micStream && micActive) callSpeaker(spk);
+     if (ytPlaying && ytVideoId) {
+       try { conn.send({ type: 'youtube', videoId: ytVideoId, action: 'play' }); } catch {}
+     }
   });
   peer.on('call', () => {}); // ignore incoming calls
   peer.on('error', (e) => setConn(false, 'エラー: ' + e.type));
@@ -183,6 +214,7 @@ async function initMic() {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     document.getElementById('micBtn').disabled = false;
     document.getElementById('sendTextBtn').disabled = false;
+     document.getElementById('ytPlayBtn').disabled = false;
     setupAnalyser();
     showBanner('マイクの準備ができました', 'info');
     if (mode === 'cont') startBroadcast();
@@ -259,6 +291,70 @@ function sendText() {
   speakers.forEach(s => { try { s.conn.send({ type: 'text', message: txt }); } catch {} });
   document.getElementById('textInput').value = '';
   showBanner('「' + txt + '」を送信しました', 'info');
+}
+
+
+// ── YOUTUBE AUDIO ──
+function extractYouTubeId(url) {
+  try {
+    const u = new URL(url.trim());
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('/')[0];
+    if (u.hostname.includes('youtube.com')) {
+      if (u.pathname === '/watch') return u.searchParams.get('v');
+      if (u.pathname.startsWith('/shorts/')) return u.pathname.split('/')[2];
+      if (u.pathname.startsWith('/embed/')) return u.pathname.split('/')[2];
+    }
+  } catch {}
+  return null;
+}
+
+function playYouTube() {
+  const url = document.getElementById('ytUrl').value.trim();
+  const id = extractYouTubeId(url);
+  if (!id) {
+    showBanner('YouTube URLを正しく入力してください');
+    return;
+  }
+
+  ytVideoId = id;
+  ytPlaying = true;
+
+  // Host側でも再生
+  const playerUrl = 'https://www.youtube.com/embed/' + encodeURIComponent(id)
+    + '?autoplay=1&playsinline=1&rel=0';
+  document.getElementById('ytPlayer').src = playerUrl;
+  document.getElementById('ytPlayerWrap').style.display = 'block';
+
+  // 接続中の全スピーカーへYouTube動画IDを送る。
+  // 実際の音声は各スピーカー端末のYouTubeプレーヤーで再生される。
+  speakers.forEach(s => {
+    try {
+      s.conn.send({ type: 'youtube', videoId: id, action: 'play' });
+    } catch {}
+  });
+
+  document.getElementById('ytPlayBtn').disabled = true;
+  document.getElementById('ytStopBtn').disabled = false;
+  document.getElementById('ytStatus').textContent =
+    '▶ 再生中：接続中のスピーカーにも再生指示を送信しました。';
+  showBanner('YouTube音源の再生を開始しました', 'info');
+}
+
+function stopYouTube() {
+  ytPlaying = false;
+  ytVideoId = null;
+
+  document.getElementById('ytPlayer').src = '';
+  document.getElementById('ytPlayerWrap').style.display = 'none';
+
+  speakers.forEach(s => {
+    try { s.conn.send({ type: 'youtube', action: 'stop' }); } catch {}
+  });
+
+  document.getElementById('ytPlayBtn').disabled = false;
+  document.getElementById('ytStopBtn').disabled = true;
+  document.getElementById('ytStatus').textContent = '停止しました。';
+  showBanner('YouTube音源を停止しました', 'info');
 }
 
 // ── SPEAKER LIST ──
