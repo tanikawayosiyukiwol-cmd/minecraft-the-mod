@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>サイト画像ピッカー</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#172033;background:#f4f7fb}
+*{box-sizing:border-box}body{margin:0}header{background:#152b4a;color:#fff;padding:24px 18px}
+header h1{margin:0 0 6px;font-size:clamp(1.35rem,4vw,2rem)}header p{margin:0;color:#d9e7fb}
+main{max-width:1100px;margin:22px auto;padding:0 16px 40px}
+.panel{background:white;border:1px solid #dce4ef;border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 4px 18px #18375a0a}
+label{font-weight:700;display:block;margin-bottom:8px}
+.urlrow{display:flex;gap:8px;flex-wrap:wrap}input[type=url]{flex:1;min-width:220px;padding:12px;border:1px solid #b9c8dc;border-radius:10px;font-size:16px}
+button,.filelabel{border:0;border-radius:10px;padding:11px 15px;font-size:15px;font-weight:700;cursor:pointer;background:#1769d2;color:white}
+button.secondary{background:#e8eef7;color:#1a3150}button:disabled{opacity:.45;cursor:not-allowed}
+.note{font-size:13px;color:#586a82;line-height:1.6;margin:10px 0 0}
+.status{margin-top:12px;font-size:14px;white-space:pre-wrap}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.tile{border:1px solid #dce4ef;border-radius:12px;overflow:hidden;background:#fff;min-width:0}
+.tile.selected{outline:3px solid #1769d2;border-color:#1769d2}
+.preview{height:150px;background:#edf2f8;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.preview img{max-width:100%;max-height:100%;object-fit:contain}
+.tileinfo{padding:10px}.tileinfo label{display:flex;gap:8px;align-items:flex-start;font-weight:600;font-size:13px;overflow-wrap:anywhere}
+.tileinfo a{font-size:12px;color:#1769d2;display:block;margin-top:8px;overflow-wrap:anywhere}
+.tileinfo input{margin-top:2px}
+.empty{color:#65758b;text-align:center;padding:36px 10px}
+footer{font-size:12px;color:#66768c;line-height:1.6}
+@media(max-width:520px){.panel{padding:13px}#grid{grid-template-columns:repeat(2,minmax(0,1fr))}.preview{height:120px}}
+</style>
+</head>
+<body>
+<header><h1>🖼️ サイト画像ピッカー</h1><p>サイトURLから画像を探して、選んだ画像を保存</p></header>
+<main>
+<section class="panel">
+<label for="siteUrl">画像を探したいサイトのURL</label>
+<div class="urlrow">
+<input id="siteUrl" type="url" placeholder="https://example.com/" autocomplete="url">
+<button id="scanBtn">画像を探す</button>
+</div>
+<p class="note">公開されているページを対象にします。サイト側の設定やアクセス制限によっては取得できないことがあります。ログインが必要なページには対応していません。</p>
+<div id="status" class="status" role="status"></div>
+</section>
+<section class="panel">
+<div class="toolbar">
+<strong id="count">画像 0 枚</strong>
+<button id="allBtn" class="secondary" disabled>すべて選択</button>
+<button id="noneBtn" class="secondary" disabled>選択解除</button>
+<button id="downloadBtn" disabled>選択画像をダウンロード</button>
+</div>
+<div id="grid"><div class="empty">URLを入力して「画像を探す」を押してください。</div></div>
+</section>
+<footer>注意：画像の利用・再配布には著作権やサイトの利用規約が関係する場合があります。自分が利用する権利のある画像を保存してください。複数画像は順番にダウンロードします。ブラウザーやサイトの制限により、保存できない画像がある場合があります。</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let images=[];
+function setStatus(s){$('status').textContent=s}
+function absUrl(src,base){try{return new URL(src,base).href}catch{return null}}
+function isImageUrl(u){return /\.(avif|bmp|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i.test(u)}
+function unique(list){return [...new Set(list.filter(Boolean).map(u=>u.replace(/#.*$/,'')))].filter(u=>/^https?:\/\//i.test(u))}
+function addImage(url,alt=''){
+ if(images.some(x=>x.url===url))return;
+ images.push({url,alt,selected:false});
+}
+function render(){
+ $('count').textContent=`画像 ${images.length} 枚`;
+ $('allBtn').disabled=!images.length;$('noneBtn').disabled=!images.length;
+ $('downloadBtn').disabled=!images.some(x=>x.selected);
+ const grid=$('grid');grid.replaceChildren();
+ if(!images.length){grid.innerHTML='<div class="empty">画像が見つかりませんでした。</div>';return}
+ images.forEach((item,i)=>{
+  const tile=document.createElement('article');tile.className='tile'+(item.selected?' selected':'');
+  const preview=document.createElement('div');preview.className='preview';
+  const img=document.createElement('img');img.loading='lazy';img.alt=item.alt||'サイト画像';img.src=item.url;
+  img.onerror=()=>{img.style.display='none';preview.textContent='プレビューを表示できません';preview.style.fontSize='12px';preview.style.color='#66768c'};
+  preview.appendChild(img);
+  const info=document.createElement('div');info.className='tileinfo';
+  const lab=document.createElement('label');const cb=document.createElement('input');cb.type='checkbox';cb.checked=item.selected;
+  cb.addEventListener('change',()=>{item.selected=cb.checked;tile.classList.toggle('selected',item.selected);$('downloadBtn').disabled=!images.some(x=>x.selected)});
+  const txt=document.createElement('span');txt.textContent=item.alt||`画像 ${i+1}`;lab.append(cb,txt);
+  const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener';link.textContent='画像を別タブで開く';link.title=item.url;
+  info.append(lab,link);tile.append(preview,info);grid.appendChild(tile);
+ });
+}
+async function fetchPage(url){
+ // A public CORS proxy is used because browsers normally block cross-site page fetching.
+ const proxy='https://api.allorigins.win/raw?url='+encodeURIComponent(url);
+ const res=await fetch(proxy,{signal:AbortSignal.timeout(25000)});
+ if(!res.ok)throw new Error('ページ取得に失敗しました (HTTP '+res.status+')');
+ return await res.text();
+}
+$('scanBtn').addEventListener('click',async()=>{
+ let raw=$('siteUrl').value.trim();
+ if(!raw){setStatus('サイトURLを入力してください。');return}
+ try{const u=new URL(raw);if(!['http:','https:'].includes(u.protocol))throw 0;raw=u.href}catch{setStatus('正しい http:// または https:// のURLを入力してください。');return}
+ $('scanBtn').disabled=true;setStatus('ページを取得して画像を探しています…');images=[];render();
+ try{
+  const html=await fetchPage(raw);
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const baseTag=doc.querySelector('base[href]');
+  const base=baseTag?absUrl(baseTag.getAttribute('href'),raw)||raw:raw;
+  doc.querySelectorAll('img').forEach(el=>{
+   const src=el.getAttribute('src')||el.getAttribute('data-src')||el.getAttribute('data-lazy-src')||el.getAttribute('data-original');
+   const url=absUrl(src,base);if(url)addImage(url,el.getAttribute('alt')||'');
+   const srcset=el.getAttribute('srcset')||el.getAttribute('data-srcset');
+   if(srcset)srcset.split(',').forEach(part=>{const u=absUrl(part.trim().split(/\s+/)[0],base);if(u)addImage(u,el.getAttribute('alt')||'')});
+  });
+  doc.querySelectorAll('source[srcset], [style*="background-image"]').forEach(el=>{
+   const srcset=el.getAttribute('srcset');if(srcset)srcset.split(',').forEach(part=>{const u=absUrl(part.trim().split(/\s+/)[0],base);if(u)addImage(u,'')});
+   const style=el.getAttribute('style')||'';const m=style.match(/background-image\s*:\s*url\(['"]?(.*?)['"]?\)/i);if(m)addImage(absUrl(m[1],base),'');
+  });
+  // Include links to direct image files on the page.
+  doc.querySelectorAll('a[href]').forEach(a=>{const u=absUrl(a.getAttribute('href'),base);if(u&&isImageUrl(u))addImage(u,a.textContent.trim())});
+  render();
+  setStatus(images.length?`${images.length} 枚の画像候補を見つけました。保存したい画像にチェックを入れてください。`:'画像を見つけられませんでした。別のページURLを試してください。');
+ }catch(e){setStatus('取得できませんでした。\nサイトが外部取得を拒否しているか、通信制限の可能性があります。\nエラー: '+(e.message||e)+'\n\nトップページではなく、画像が載っている個別ページのURLも試してください。')}
+ finally{$('scanBtn').disabled=false}
+});
+$('allBtn').addEventListener('click',()=>{images.forEach(x=>x.selected=true);render()});
+$('noneBtn').addEventListener('click',()=>{images.forEach(x=>x.selected=false);render()});
+$('downloadBtn').addEventListener('click',async()=>{
+ const selected=images.filter(x=>x.selected);if(!selected.length)return;
+ $('downloadBtn').disabled=true;
+ let ok=0,failed=0,next=0;
+ const concurrency=6;
+ async function worker(){
+  while(true){
+   const i=next++;if(i>=selected.length)return;
+   const item=selected[i];
+   setStatus(`高速ダウンロード中… ${Math.min(next,selected.length)}/${selected.length} 件を処理中 | 保存開始 ${ok} 枚 | 失敗 ${failed} 枚`);
+   try{
+    const response=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(item.url),{signal:AbortSignal.timeout(20000)});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const blob=await response.blob();
+    if(!blob.type.startsWith('image/') && !isImageUrl(item.url))throw new Error('画像ではない応答');
+    const objectUrl=URL.createObjectURL(blob);const a=document.createElement('a');
+    const path=new URL(item.url).pathname;let name=decodeURIComponent(path.split('/').pop()||`image-${i+1}.jpg`).replace(/[\\/:*?"<>|]/g,'_');
+    if(!/\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(name)){const ext=(blob.type.split('/')[1]||'jpg').replace('jpeg','jpg');name=`image-${i+1}.${ext}`}
+    a.href=objectUrl;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),10000);ok++;
+   }catch{failed++}
+  }
+ }
+ await Promise.all(Array.from({length:Math.min(concurrency,selected.length)},()=>worker()));
+ setStatus(`完了：保存開始 ${ok} 枚、失敗 ${failed} 枚。\n複数ダウンロードをブラウザーがブロックした場合は、サイトのダウンロード許可を確認してください。失敗した画像は「画像を別タブで開く」から保存できます。`);
+ $('downloadBtn').disabled=!images.some(x=>x.selected);
+});
+</script>
+</body>
+</html>
