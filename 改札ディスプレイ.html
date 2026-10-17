@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>改札 表示パネル</title>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --bg: #101418; --panel: #171c21; --border: #2b3238;
+    --text: #e7e4dc; --text-dim: #8f9aa1; --green: #00a650; --red: #e2604f;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Hiragino Sans','IBM Plex Sans JP',sans-serif; overflow:hidden; }
+
+  .screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; text-align:center; transition:background 0.15s; }
+
+  /* 待ち受け */
+  #idle .station { font-size:clamp(34px,8vw,84px); font-weight:800; letter-spacing:0.12em; }
+  #idle .msg { font-size:clamp(20px,3.6vw,36px); color:var(--text-dim); }
+  #idle .icon { font-size:clamp(56px,12vw,120px); line-height:1; }
+  #idle .clock { font-size:clamp(18px,3vw,30px); font-variant-numeric:tabular-nums; color:var(--text-dim); }
+
+  /* 連携コード（待ち受け画面の下に常時表示） */
+  .link-box { position:fixed; left:0; right:0; bottom:0; padding:12px 16px; display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; font-size:13px; color:var(--text-dim); background:rgba(0,0,0,0.35); }
+  .link-box .code { font-family:monospace; font-size:28px; letter-spacing:0.2em; color:var(--text); }
+  .link-box button { font-family:inherit; font-size:12px; padding:6px 12px; border-radius:16px; border:1px solid var(--border); background:transparent; color:var(--text-dim); cursor:pointer; }
+
+  /* 結果表示 */
+  #result { cursor:pointer; background:var(--bg); }
+  #result.ok { background:#0c2a1a; }
+  #result.warn { background:#2d2410; }
+  #result.error { background:#2e1713; }
+  #result .title { font-size:clamp(28px,5.4vw,52px); font-weight:700; letter-spacing:0.1em; color:var(--text-dim); }
+  #result.ok .title { color:#7be3a8; }
+  #result.warn .title { color:#f0c98a; }
+  #result.error .title { color:#ffb3a8; }
+  #result .rows { display:grid; grid-template-columns:auto auto; gap:8px 30px; font-size:clamp(20px,3.8vw,34px); align-items:baseline; }
+  #result .rows .k { text-align:left; color:var(--text-dim); }
+  #result .rows .v { text-align:right; font-variant-numeric:tabular-nums; }
+  #result .balance { font-size:clamp(22px,4vw,34px); color:var(--text-dim); margin-top:8px; }
+  #result .balance b { display:block; font-size:clamp(72px,18vw,170px); color:var(--text); line-height:1.08; font-variant-numeric:tabular-nums; }
+  #result .balance b.neg { color:var(--red); }
+  #result .note { font-size:clamp(16px,2.8vw,26px); min-height:1.4em; }
+  #result .card { font-size:14px; color:var(--text-dim); }
+
+  /* 開始（音・画面点灯のためのタップが必要） */
+  #start { background:var(--bg); z-index:100; cursor:pointer; }
+  #start h1 { font-size:clamp(24px,5vw,44px); margin:0; }
+  #start p { color:var(--text-dim); font-size:clamp(14px,2.4vw,20px); max-width:620px; line-height:1.7; margin:0; }
+  #start .go { margin-top:10px; font-size:clamp(18px,3vw,26px); padding:14px 40px; border-radius:40px; background:var(--green); color:#062c17; font-weight:700; }
+</style>
+</head>
+<body>
+
+<div id="start" class="screen">
+  <h1>🚉 改札 表示パネル</h1>
+  <p>このタブレットは、カードの読み取りはしません。改札機（読み取り側のスマホ）と連携して、運賃や残高を大きく表示します。</p>
+  <div class="go">タップして開始</div>
+</div>
+
+<div id="idle" class="screen">
+  <div class="icon">📇</div>
+  <div class="station" id="stationName">改札</div>
+  <div class="msg" id="idleMsg">カードをタッチしてください</div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div id="result" class="screen" hidden>
+  <div class="title" id="rTitle"></div>
+  <div class="rows" id="rRows"></div>
+  <div class="balance"><span id="rBalanceLabel">残高</span><b id="rBalance"></b></div>
+  <div class="note" id="rNote"></div>
+  <div class="card" id="rCard"></div>
+</div>
+
+<div class="link-box" id="linkBox" hidden>
+  <span>連携コード</span><span class="code" id="linkCode"></span>
+  <span id="linkHint">改札機（スマホ）の「タブレット表示と連携」にこの4けたを入力してください</span>
+  <button id="newCodeBtn" type="button">コードを作り直す</button>
+</div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDBbV89C3tLId929jyK2Ay97BYISkNeOBg",
+  authDomain: "tsuusinkikai-comm-tool.firebaseapp.com",
+  databaseURL: "https://tsuusinkikai-comm-tool-default-rtdb.firebaseio.com",
+  projectId: "tsuusinkikai-comm-tool",
+  storageBucket: "tsuusinkikai-comm-tool.firebasestorage.app",
+  messagingSenderId: "632458639323",
+  appId: "1:632458639323:web:22b7a3e1aae983d6c959fe"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+function yen(n) { return Number(n).toLocaleString('ja-JP') + '円'; }
+
+// ---- 連携コード（4けた）。この端末に保存。改札機側のスマホに入力してもらう ----
+function getCode() {
+  let c = null;
+  try { c = localStorage.getItem('gd_code'); } catch (e) {}
+  if (!/^\d{4}$/.test(c || '')) {
+    c = String(Math.floor(1000 + Math.random() * 9000));
+    try { localStorage.setItem('gd_code', c); } catch (e) {}
+  }
+  return c;
+}
+let code = getCode();
+let listenRef = null;
+let lastSeq = null;       // 起動時にすでにあった古いイベントは表示しない
+let resultTimer = null;
+
+function listen() {
+  if (listenRef) listenRef.off();
+  lastSeq = null;
+  document.getElementById('linkCode').textContent = code;
+  listenRef = db.ref('gate_display/' + code);
+  listenRef.on('value', snap => {
+    const v = snap.val() || {};
+    if (v.info && v.info.station) {
+      document.getElementById('stationName').textContent = v.info.station;
+      document.getElementById('idleMsg').textContent = 'カードをタッチしてください';
+      document.getElementById('linkHint').textContent = '改札機と連携中';
+    } else {
+      document.getElementById('stationName').textContent = '改札';
+      document.getElementById('idleMsg').textContent = '改札機（スマホ）の連携待ちです';
+      document.getElementById('linkHint').textContent = '改札機（スマホ）の「タブレット表示と連携」にこの4けたを入力してください';
+    }
+    const ev = v.event;
+    if (lastSeq === null) { lastSeq = ev ? ev.seq : 0; return; }
+    if (ev && ev.seq > lastSeq) { lastSeq = ev.seq; showEvent(ev); }
+  });
+}
+document.getElementById('newCodeBtn').addEventListener('click', () => {
+  if (!confirm('連携コードを作り直します。改札機側のスマホにも、新しいコードを入力し直してください。')) return;
+  db.ref('gate_display/' + code).remove().catch(() => {});
+  try { localStorage.removeItem('gd_code'); } catch (e) {}
+  code = getCode();
+  listen();
+});
+
+// ---- 音（改札機っぽいピッ） ----
+let audioCtx = null;
+function playTone(kind) {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const note = (freq, start, dur, vol) => {
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = 'sine'; osc.frequency.value = freq;
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(vol, now + start);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+    osc.start(now + start); osc.stop(now + start + dur + 0.02);
+  };
+  if (kind === 'ok') { note(1046.5, 0, 0.09, 0.25); note(1567.98, 0.1, 0.14, 0.25); }
+  else if (kind === 'warn') { note(880, 0, 0.12, 0.22); note(659.25, 0.13, 0.16, 0.2); }
+  else { note(220, 0, 0.15, 0.25); note(196, 0.16, 0.2, 0.25); }
+}
+
+// ---- 結果表示 ----
+function showEvent(ev) {
+  const el = document.getElementById('result');
+  el.className = 'screen ' + (ev.kind || '');
+  document.getElementById('rTitle').textContent = ev.title || '';
+  document.getElementById('rRows').innerHTML = (ev.rows || []).map(r =>
+    '<div class="k">' + escapeHtml(String(r[0])) + '</div><div class="v">' + escapeHtml(String(r[1])) + '</div>').join('');
+  document.getElementById('rBalanceLabel').textContent = ev.balanceLabel || '残高';
+  const b = document.getElementById('rBalance');
+  b.textContent = yen(ev.balance || 0);
+  b.className = (ev.balance || 0) < 0 ? 'neg' : '';
+  document.getElementById('rNote').textContent = ev.note || '';
+  document.getElementById('rCard').textContent = ev.card ? 'カード ' + ev.card : '';
+  document.getElementById('idle').hidden = true;
+  el.hidden = false;
+  playTone(ev.kind);
+  clearTimeout(resultTimer);
+  resultTimer = setTimeout(hideResult, Math.min(Math.max(ev.autoCloseMs || 5000, 2000), 15000));
+}
+function hideResult() {
+  clearTimeout(resultTimer);
+  document.getElementById('result').hidden = true;
+  document.getElementById('idle').hidden = false;
+}
+document.getElementById('result').addEventListener('click', hideResult);
+
+// ---- 時計 ----
+function tickClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+}
+tickClock();
+setInterval(tickClock, 15000);
+
+// ---- 開始（音を使えるようにし、画面を点灯したままにする） ----
+let wakeLock = null;
+async function keepScreenOn() {
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  // 開始後にタブへ戻ってきたとき、画面点灯の指定をかけ直す
+  if (document.visibilityState === 'visible' && document.getElementById('start').hidden) keepScreenOn();
+});
+document.getElementById('start').addEventListener('click', () => {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    audioCtx.resume();
+  } catch (e) { /* 音が出せなくても表示は動く */ }
+  keepScreenOn();
+  try { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); } catch (e) {}
+  document.getElementById('start').hidden = true;
+  document.getElementById('linkBox').hidden = false;
+});
+
+listen();
+</script>
+</body>
+</html>
