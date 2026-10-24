@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ことでんLCD 操作</title>
+<style>
+:root{--yel:#f7c600;--bg:#15181c;--p:#1e2329;--b:#323a43;--t:#eceff1;--d:#93a1ad;--r:#e2604f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t);font-family:'Hiragino Sans','Noto Sans JP','Yu Gothic',sans-serif;padding:12px;max-width:560px;margin:0 auto}
+h1{font-size:17px;margin:4px 0 10px}
+.card{background:var(--p);border:1px solid var(--b);border-radius:10px;padding:12px;margin-bottom:10px}
+.lbl{font-size:12px;color:var(--d);margin-bottom:6px}
+button,select,input{font:inherit;color:var(--t);background:#262d35;border:1px solid var(--b);border-radius:8px;padding:12px}
+button:active{filter:brightness(1.3)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.now{text-align:center}
+.now .ph{display:inline-block;background:var(--yel);color:#000;font-weight:900;border-radius:5px;padding:2px 14px;font-size:15px}
+.now .nm{font-size:44px;font-weight:900;margin:6px 0 0}
+.now .sub{color:var(--d);font-size:13px}
+.big{width:100%;font-size:22px;font-weight:900;padding:20px;background:var(--yel);color:#000;border:0}
+.seg button.on{background:var(--yel);color:#000;font-weight:900;border-color:var(--yel)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.grid button{padding:10px 4px;font-size:13px}
+.grid button.cur{background:var(--yel);color:#000;font-weight:900}
+.ann{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ann button{text-align:left;font-size:13px;padding:10px}
+.st{font-size:12px;color:var(--d)}
+.ok{color:#6fd49a}.ng{color:var(--r)}
+.code{font-size:26px;letter-spacing:.2em;text-align:center;width:100%}
+</style>
+</head>
+<body>
+<h1>ことでんLCD 操作(スマホ用)</h1>
+
+<div class="card">
+  <div class="lbl">連携コード(表示画面に出ている4桁)</div>
+  <div class="row"><input class="code" id="code" inputmode="numeric" maxlength="4" placeholder="0000"><button id="link" style="max-width:90px">接続</button></div>
+  <div class="st" id="linkSt">コードを入れて「接続」</div>
+</div>
+
+<div class="card now">
+  <span class="ph" id="phase">—</span>
+  <div class="nm" id="nm">—</div>
+  <div class="sub" id="sub"></div>
+</div>
+
+<button class="big" id="nextBtn">次へ ▶</button>
+<div class="row" style="margin:8px 0 10px"><button id="backBtn">◀ ひとつ戻る</button><button id="stopAudio">🔇 放送を止める</button></div>
+
+<div class="card seg">
+  <div class="lbl">方向</div>
+  <div class="row"><button data-dir="down" id="dDown">琴電琴平ゆき</button><button data-dir="up" id="dUp">高松築港ゆき</button></div>
+</div>
+
+<div class="card seg">
+  <div class="lbl">画面</div>
+  <div class="row" id="scr">
+    <button data-s="auto">自動</button><button data-s="station">駅名</button><button data-s="map">路線図</button><button data-s="door">ドア注意</button><button data-s="idle">待機</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="lbl">駅を選ぶ(押すと「つぎは」からその駅)</div>
+  <div class="grid" id="stGrid"></div>
+</div>
+
+<div class="card">
+  <div class="lbl">案内放送(表示画面から鳴ります)</div>
+  <div class="ann" id="ann"></div>
+</div>
+
+<div class="card">
+  <div class="lbl">自動運転(駅ごとに自動で進める)</div>
+  <div class="row"><button id="autoBtn">▶ 自動運転を開始</button></div>
+  <div class="row" style="margin-top:8px"><label class="st" style="align-self:center">つぎは→まもなく <input id="tA" type="number" value="25" min="5" style="width:70px;padding:6px"> 秒</label></div>
+  <div class="row" style="margin-top:6px"><label class="st" style="align-self:center">まもなく→到着 <input id="tB" type="number" value="15" min="5" style="width:70px;padding:6px"> 秒</label></div>
+  <div class="row" style="margin-top:6px"><label class="st" style="align-self:center">到着→発車 <input id="tC" type="number" value="20" min="5" style="width:70px;padding:6px"> 秒</label></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
+<script>
+const NAMES=['高松築港','片原町','瓦町','栗林公園','三条','伏石','太田','仏生山','空港通り','一宮','円座','岡本','挿頭丘','畑田','陶','綾川','滝宮','羽床','栗熊','岡田','羽間','榎井','琴電琴平'];
+const LAST=NAMES.length-1;
+const ANN=[['003','お待たせいたしました…'],['004','電車は事故防止のため…'],['005','交通系ICカードは…(1)'],['006','各車両には、優先席…'],['007','優先席付近では、混雑時…'],['008','ドアが閉まります…'],['009','駆け込み乗車は大変…'],['010','交通系ICカードは…(2)']];
+const $=id=>document.getElementById(id);
+let S={dir:'down',idx:0,phase:'stop',screen:'auto',seq:0,play:null};
+let code=localStorage.getItem('lcd_op_code')||'';
+$('code').value=code;
+const firebaseConfig={apiKey:"AIzaSyC4bwihhemETua3nJGlgnz6AXh5OAgoOnA",authDomain:"renkei-9225d.firebaseapp.com",databaseURL:"https://renkei-9225d-default-rtdb.firebaseio.com",projectId:"renkei-9225d",storageBucket:"renkei-9225d.firebasestorage.app",messagingSenderId:"",appId:""};
+let db=null,infoRef=null;
+const bc=('BroadcastChannel' in window)?new BroadcastChannel('kotoden-lcd'):null;
+try{if(typeof firebase==='undefined')throw new Error('Firebase未読込');firebase.initializeApp(firebaseConfig);db=firebase.database();}catch(e){$('linkSt').innerHTML='<span class="ng">⚠ '+e.message+'(同じ端末の別タブなら動きます)</span>';}
+
+function dest(){return S.dir==='down'?LAST:0;}
+function push(extra){
+  S=Object.assign({},S,extra||{});S.seq=(S.seq||0)+1;
+  const out={dir:S.dir,idx:S.idx,phase:S.phase,screen:S.screen,seq:S.seq,play:S.play||null};
+  if(out.play===null)delete out.play;
+  if(code.length===4){
+    if(db)db.ref('lcd/'+code+'/state').set(out).catch(e=>{$('linkSt').innerHTML='<span class="ng">⚠ 送信失敗: '+(e.message||e)+'</span>';});
+    if(bc)bc.postMessage({code,state:out});
+  }
+  draw();
+}
+function draw(){
+  const L={next:'つぎは',soon:'まもなく',stop:'ただいま'};
+  $('phase').textContent=L[S.phase];
+  $('nm').textContent=NAMES[S.idx];
+  $('sub').textContent=NAMES[dest()]+' ゆき';
+  $('dDown').classList.toggle('on',S.dir==='down');$('dUp').classList.toggle('on',S.dir==='up');
+  document.querySelectorAll('#scr button').forEach(b=>b.classList.toggle('on',b.dataset.s===S.screen));
+  document.querySelectorAll('#stGrid button').forEach((b,i)=>b.classList.toggle('cur',i===S.idx));
+}
+function advance(){
+  const e=dest();
+  if(S.phase==='next')return push({phase:'soon',play:null});
+  if(S.phase==='soon')return push({phase:'stop',play:null});
+  if(S.idx===e)return; // 終点
+  return push({idx:S.dir==='down'?S.idx+1:S.idx-1,phase:'next',play:null});
+}
+function back(){
+  if(S.phase==='stop')return push({phase:'soon',play:null});
+  if(S.phase==='soon')return push({phase:'next',play:null});
+  const p=S.dir==='down'?S.idx-1:S.idx+1;
+  if(p<0||p>LAST)return;
+  push({idx:p,phase:'stop',play:null});
+}
+$('nextBtn').onclick=()=>{advance();};
+$('backBtn').onclick=back;
+$('stopAudio').onclick=()=>push({play:{f:'stop',n:Date.now()}});
+document.querySelectorAll('[data-dir]').forEach(b=>b.onclick=()=>{const d=b.dataset.dir;push({dir:d,idx:d==='down'?0:LAST,phase:'stop',play:null});});
+document.querySelectorAll('#scr button').forEach(b=>b.onclick=()=>push({screen:b.dataset.s,play:null}));
+NAMES.forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>push({idx:i,phase:'next',play:null});$('stGrid').appendChild(b);});
+ANN.forEach(([f,t])=>{const b=document.createElement('button');b.textContent=f+' '+t;b.onclick=()=>{push({play:{f,n:Date.now()}});if(f==='008'||f==='009')push({screen:'door',play:S.play});};$('ann').appendChild(b);});
+
+/* 接続 */
+function link(){
+  const v=$('code').value.replace(/\D/g,'');
+  if(v.length!==4){$('linkSt').innerHTML='<span class="ng">4桁の数字を入れてください</span>';return;}
+  code=v;try{localStorage.setItem('lcd_op_code',v);}catch(e){}
+  $('linkSt').textContent='コード '+v+' に接続しました';
+  if(infoRef)infoRef.off();
+  if(db){infoRef=db.ref('lcd/'+code+'/info');infoRef.on('value',s=>{const x=s.val();const ok=x&&x.t&&(Date.now()-x.t<40000);$('linkSt').innerHTML=ok?'<span class="ok">● 表示画面と連携中(コード '+v+')</span>':'<span class="ng">○ 表示画面が見つかりません(コード '+v+')。表示画面の4桁を確認</span>';});}
+  push({});
+}
+$('link').onclick=link;
+if(code)link();
+
+/* 自動運転 */
+let autoT=null;
+function autoStep(){
+  clearTimeout(autoT);
+  const sec=S.phase==='next'?+$('tA').value:S.phase==='soon'?+$('tB').value:+$('tC').value;
+  autoT=setTimeout(()=>{
+    if(S.phase==='stop'&&S.idx===dest()){stopAuto();return;}
+    advance();autoStep();
+  },Math.max(5,sec)*1000);
+}
+function stopAuto(){clearTimeout(autoT);autoT=null;$('autoBtn').textContent='▶ 自動運転を開始';}
+$('autoBtn').onclick=()=>{if(autoT){stopAuto();return;}$('autoBtn').textContent='■ 自動運転を止める';autoStep();};
+draw();
+window.__op={push,advance,get S(){return S;},setCode:c=>{code=c;}};
+</script>
+</body>
+</html>

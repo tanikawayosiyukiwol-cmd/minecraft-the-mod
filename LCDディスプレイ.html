@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ことでんLCD 表示</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700;900&family=Noto+Sans+KR:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--yel:#f7c600;--yel2:#ffe36b;--ink:#17181a;--bar:#202226;--paper:#f4f7fa;--red:#d8342b}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:'Noto Sans JP','Noto Sans KR','Hiragino Sans','Yu Gothic',sans-serif;color:var(--ink)}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#lcd{width:1600px;height:450px;position:relative;background:#0c0d0f;overflow:hidden;transform-origin:center center;flex:none}
+
+/* 左:景色パネル */
+#photo{position:absolute;left:0;top:0;width:560px;height:450px;background:#000;overflow:hidden;transition:width .6s}
+#photo svg{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 1.2s}
+#photo svg.on{opacity:1}
+#photoCap{position:absolute;left:14px;bottom:10px;color:#fff;font-size:14px;text-shadow:0 1px 3px #000;opacity:.9}
+#main{position:absolute;left:560px;top:0;width:1040px;height:450px;transition:left .6s,width .6s}
+body.full #photo{width:0}
+body.full #main{left:0;width:1600px}
+
+/* ヘッダ */
+#head{position:absolute;left:0;top:0;right:0;height:98px;background:var(--bar);overflow:hidden}
+#lineTab{position:absolute;left:0;top:0;width:330px;height:98px;background:var(--yel);clip-path:polygon(0 0,100% 0,86% 100%,0 100%);padding:10px 0 0 28px}
+#lineTab b{display:block;font-size:42px;font-weight:900;line-height:1.05;letter-spacing:.04em}
+#lineTab small{font-size:17px;font-weight:700;display:block;margin-top:2px}
+#dest{position:absolute;left:300px;top:0;height:98px;display:flex;align-items:center;gap:10px;color:#fff;padding-left:24px;white-space:nowrap}
+#dest .n{font-size:40px;font-weight:900}
+#dest .y{font-size:20px;color:var(--yel2);font-weight:700}
+#strip{position:absolute;left:560px;right:20px;top:0;height:98px;display:flex;align-items:center}
+#strip .sep{position:absolute;left:-18px;top:22px;bottom:22px;width:2px;background:#555}
+.sbox{position:relative;background:#fff;border:3px solid #d7b20a;border-radius:10px;font-weight:900;font-size:30px;padding:3px 18px;white-space:nowrap;z-index:2}
+.sbox.cur{background:#e9edf1;border-color:#9aa3ab;color:#555}
+.sbox small{position:absolute;left:4px;top:-23px;font-size:17px;color:#fff;font-weight:700}
+.sline{flex:1;height:10px;background:var(--yel);margin:0 -4px;position:relative;z-index:1}
+.sarrow{position:absolute;color:var(--red);font-size:30px;z-index:3}
+
+/* 本体 */
+#body{position:absolute;left:0;right:0;top:98px;bottom:0;background:var(--paper);overflow:hidden}
+#stat{position:absolute;left:0;top:0;height:60px;width:100%;background:linear-gradient(90deg,var(--yel) 0,var(--yel) 55%,rgba(247,198,0,0) 100%);display:flex;align-items:center;padding-left:24px;gap:16px;white-space:nowrap}
+#stat .j{font-size:46px;font-weight:900}
+#stat .o{font-size:30px;font-weight:700;color:#333;transition:opacity .4s}
+#hira{position:absolute;left:0;right:0;top:66px;text-align:center;font-size:28px;font-weight:700;letter-spacing:.2em;color:#333}
+#kanji{position:absolute;left:0;right:0;top:106px;text-align:center;font-size:138px;font-weight:900;line-height:1.05;letter-spacing:.04em}
+#kanji.long{font-size:112px}
+#kanji.xl{font-size:92px}
+#rule{position:absolute;left:150px;right:190px;top:268px;height:3px;background:#8b93a0}
+#sub{position:absolute;left:0;right:0;top:282px;text-align:center;font-size:48px;font-weight:700;color:#222;transition:opacity .4s}
+#sub.small{font-size:42px}
+#badge{position:absolute;right:30px;top:178px;background:var(--yel);border:3px solid #333;border-radius:8px;font:900 40px/1 'Noto Sans JP',sans-serif;padding:8px 12px}
+#leaves{position:absolute;inset:0;pointer-events:none}
+
+/* 路線図 */
+#map{position:absolute;inset:0;background:linear-gradient(#f2f6fa,#dfe9f3);display:none}
+#mapHead{position:absolute;left:0;right:0;top:0;height:0}
+#mapRow{position:absolute;left:30px;right:30px;top:20px;bottom:100px;display:flex}
+.mc{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.mc .nm{writing-mode:vertical-rl;font-size:36px;font-weight:900;letter-spacing:.06em;margin-bottom:12px;height:210px;display:flex;align-items:flex-start;white-space:nowrap}
+.mc .nm.l5{font-size:30px}
+.mc.pass .nm{color:#9aa0a6}
+.mc.cur .nm{color:#000;font-size:42px}
+.mc.cur .nm.l5{font-size:34px}
+.mc .kb{position:relative;z-index:2;width:48px;height:36px;border:3px solid #c9a200;border-radius:6px;background:#fff;font:900 17px/30px 'Noto Sans JP',sans-serif;text-align:center}
+.mc.pass .kb{border-color:#bdbdbd;color:#999;background:#eee}
+.mc.cur .kb{background:var(--yel);border-color:#333;transform:scale(1.28)}
+.mc.nxt .kb{border-color:var(--red)}
+.mc::after{content:"";position:absolute;left:0;right:0;bottom:15px;height:8px;background:var(--yel);z-index:1}
+.mc.pass::after{background:#c4c4c4}
+.mc:first-child::after{left:50%}.mc:last-child::after{right:50%}
+#mapBand{position:absolute;left:0;right:0;bottom:0;height:70px;background:var(--bar);color:#fff;display:flex;align-items:center;padding-left:28px;gap:18px;font-size:34px;font-weight:700}
+#mapBand .tag{background:var(--yel);color:#000;font-weight:900;padding:2px 22px;border-radius:5px;font-size:28px}
+#mapBand .bx{background:#eee;color:#000;font-weight:900;padding:2px 24px;border-radius:7px;font-size:34px}
+
+/* ドア注意 */
+#door{position:absolute;inset:0;background:var(--paper);display:none}
+#door .ill{position:absolute;left:60px;top:30px;width:330px;height:260px}
+#door .t1{position:absolute;left:430px;top:48px;font-size:50px;font-weight:900;line-height:1.35}
+#door .t2{position:absolute;left:430px;top:196px;font-size:30px;font-weight:700;color:#333;line-height:1.35;width:560px}
+#door .t3{position:absolute;left:430px;top:286px;font-size:19px;color:#555;line-height:1.5;width:560px}
+
+/* 待機 */
+#idle{position:absolute;inset:0;background:linear-gradient(#e9f2fb,#cfe3f5);display:none}
+#idle .w{position:absolute;left:-5%;right:-5%;bottom:0;height:42%;background:#1f66c9}
+#idle h2{position:absolute;left:60px;top:48px;margin:0;font-size:78px;font-weight:900;color:#1f4f9a}
+#idle p{position:absolute;left:64px;top:150px;margin:0;font-size:30px;color:#1f4f9a;font-weight:700}
+
+/* 開始オーバーレイ */
+#start{position:fixed;inset:0;background:rgba(10,12,14,.96);color:#eee;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+#start .box{width:min(560px,100%);display:flex;flex-direction:column;gap:12px;font-size:14px;line-height:1.7}
+#start h1{margin:0;font-size:20px}
+#start .code{font-size:46px;font-weight:900;letter-spacing:.2em;text-align:center;background:#1b1f24;border:1px solid #333;border-radius:8px;padding:6px}
+#start button,#start select,#start input{font:inherit;padding:11px 14px;border-radius:7px;border:1px solid #444;background:#232830;color:#fff}
+#start button.p{background:var(--yel);color:#000;font-weight:900;border:0;font-size:16px}
+#start .row{display:flex;gap:8px}#start .row>*{flex:1}
+#start .st{font-size:12px;color:#9fb0bf;min-height:1.6em}
+#ban{position:fixed;left:0;right:0;top:0;background:#b3261e;color:#fff;font-size:13px;padding:6px 10px;z-index:60;display:none}
+</style>
+</head>
+<body>
+<div id="ban"></div>
+<div id="wrap"><div id="lcd">
+  <div id="photo"><div id="photoCap"></div></div>
+  <div id="main">
+    <div id="head">
+      <div id="lineTab"><b>琴平線</b><small>Kotohira Line</small></div>
+      <div id="dest"><span class="n" id="destN">琴電琴平</span><span class="y" id="destY">ゆき</span></div>
+      <div id="strip"><div class="sep"></div>
+        <div class="sbox cur" id="sCur">片原町</div><div class="sline"></div><div class="sbox" id="sNext"><small id="sLbl">つぎは</small>瓦町</div>
+      </div>
+    </div>
+    <div id="body">
+      <div id="stat"><span class="j" id="statJ">ただいま</span><span class="o" id="statO">Now</span></div>
+      <div id="hira"></div><div id="kanji"></div><div id="rule"></div><div id="sub"></div><div id="badge">K01</div>
+      <svg id="leaves" viewBox="0 0 1040 352" preserveAspectRatio="none"></svg>
+      <div id="map"></div>
+      <div id="door">
+        <svg class="ill" viewBox="0 0 330 260"><rect x="10" y="10" width="120" height="240" rx="10" fill="#9aa4b3"/><rect x="200" y="10" width="120" height="240" rx="10" fill="#9aa4b3"/><rect x="130" y="10" width="70" height="240" fill="#444b57"/><rect x="28" y="30" width="84" height="130" rx="14" fill="#eef1f6"/><rect x="218" y="30" width="84" height="130" rx="14" fill="#eef1f6"/><path d="M165 120 l-40 0 m0 0 l16 -16 m-16 16 l16 16" stroke="#d8342b" stroke-width="10" fill="none" stroke-linecap="round" transform="translate(40 40)"/><circle cx="165" cy="215" r="26" fill="#d8342b"/><path d="M150 200 l30 30 m0 -30 l-30 30" stroke="#fff" stroke-width="8" stroke-linecap="round"/></svg>
+        <div class="t1">駆け込み乗車は<br>おやめください</div>
+        <div class="t2">It is dangerous to rush onto the train.<br>Please wait for the next train.</div>
+        <div class="t3">请勿冲上电车 / 請勿衝上電車 / 뛰어서 승차하는 것은 위험하오니 삼가 주시기 바랍니다.</div>
+      </div>
+      <div id="idle"><div class="w"></div><h2>琴平線</h2><p>Kotohira Line</p></div>
+    </div>
+  </div>
+</div></div>
+
+<div id="start"><div class="box">
+  <h1>ことでんLCD 表示画面(パソコン・タブレット用)</h1>
+  <div>連携コード(スマホ操作画面に同じ4桁を入力)</div>
+  <div class="code" id="codeShow">----</div>
+  <div class="row"><input id="codeIn" inputmode="numeric" maxlength="4" placeholder="コードを変える(4桁)"><button id="codeSet">変更</button></div>
+  <div class="st" id="fbSt">接続を確認中…</div>
+  <button class="p" id="goBtn">▶ 表示を開始(音声ON・全画面)</button>
+  <div class="row"><select id="demoDir"><option value="down">琴電琴平ゆき</option><option value="up">高松築港ゆき</option></select><button id="demoBtn">この画面だけでデモ再生</button></div>
+  <div class="st">※音声は、このボタンを押した後から鳴ります。デモは自動で次の駅へ進みます。</div>
+</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
+<script>
+/* ===== 駅データ(0=高松築港 … 22=琴電琴平) ===== */
+const ST=[
+['高松築港','たかまつちっこう','Takamatsu-Chikko','高松筑港','高松築港','다카마쓰칫코','K00'],
+['片原町','かたはらまち','Kataharamachi','片原町','片原町','가타하라마치','K01'],
+['瓦町','かわらまち','Kawaramachi','瓦町','瓦町','가와라마치','K02'],
+['栗林公園','りつりんこうえん','Ritsurin-koen','栗林公园','栗林公園','리쓰린코엔','K03'],
+['三条','さんじょう','Sanjo','三条','三條','산조','K04'],
+['伏石','ふしいし','Fushiishi','伏石','伏石','후시이시','K04'],
+['太田','おおた','Ota','太田','太田','오타','K05'],
+['仏生山','ぶっしょうざん','Busshozan','佛生山','佛生山','붓쇼잔','K06'],
+['空港通り','くうこうどおり','Kuko-dori','机场通','機場通','구코도리','K07'],
+['一宮','いちのみや','Ichinomiya','一宫','一宮','이치노미야','K08'],
+['円座','えんざ','Enza','圆座','圓座','엔자','K09'],
+['岡本','おかもと','Okamoto','冈本','岡本','오카모토','K10'],
+['挿頭丘','かざしがおか','Kazashigaoka','插头丘','插頭丘','가자시가오카','K11'],
+['畑田','はただ','Hatada','畑田','畑田','하타다','K12'],
+['陶','すえ','Sue','陶','陶','스에','K13'],
+['綾川','あやがわ','Ayagawa','绫川','綾川','아야가와','K14'],
+['滝宮','たきのみや','Takinomiya','泷宫','瀧宮','다키노미야','K15'],
+['羽床','はゆか','Hayuka','羽床','羽床','하유카','K16'],
+['栗熊','くりくま','Kurikuma','栗熊','栗熊','구리쿠마','K17'],
+['岡田','おかだ','Okada','冈田','岡田','오카다','K18'],
+['羽間','はざま','Hazama','羽间','羽間','하자마','K19'],
+['榎井','えない','Enai','榎井','榎井','에나이','K20'],
+['琴電琴平','ことでんことひら','Kotoden-Kotohira','琴电琴平','琴電琴平','고토덴고토히라','K21']
+];
+const LAST=ST.length-1;
+const LBL={
+ next:{j:'つぎは',o:['Next','下一站 / 下一站 / 다음은'],t:'つぎは'},
+ soon:{j:'まもなく',o:['We are arriving at','即将到达 / 即將抵達 / 잠시 후'],t:'まもなく'},
+ stop:{j:'ただいま',o:['Now','抵达 / 抵達 / 지금은'],t:'ただいま'}
+};
+const SCENES=[
+ {cap:'瀬戸内海',draw:s=>`<defs><linearGradient id="g${s}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd0f2"/><stop offset=".55" stop-color="#d6ecf8"/></linearGradient></defs><rect width="560" height="450" fill="url(#g${s})"/><circle cx="430" cy="110" r="46" fill="#fff6c9" opacity=".9"/><path d="M0 300 Q120 240 250 296 Q300 270 380 300 L380 330 L0 330Z" fill="#3d6b55"/><path d="M300 320 Q380 270 470 318Z" fill="#4b7c63"/><rect y="320" width="560" height="130" fill="#2f7fb3"/><path d="M0 350 q40 -10 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#7fc0e6" stroke-width="3" fill="none"/><path d="M0 390 q40 -10 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#7fc0e6" stroke-width="3" fill="none"/>`},
+ {cap:'讃岐平野',draw:s=>`<rect width="560" height="450" fill="#bfe0f7"/><path d="M0 290 L170 250 Q215 205 260 250 L560 290 L560 340 L0 340Z" fill="#6a9a78"/><path d="M215 215 Q235 190 255 215 Q235 205 215 215Z" fill="#7aa987"/><rect y="320" width="560" height="130" fill="#7fb83f"/><path d="M0 360 L560 350 M0 395 L560 390" stroke="#a6d45a" stroke-width="6"/><circle cx="90" cy="95" r="36" fill="#fff" opacity=".8"/><circle cx="130" cy="105" r="28" fill="#fff" opacity=".8"/>`},
+ {cap:'庭園',draw:s=>`<rect width="560" height="450" fill="#dff0f4"/><rect y="170" width="560" height="110" fill="#2e6b5a"/><path d="M0 280 Q140 230 280 280 T560 280 L560 450 L0 450Z" fill="#2a8aa0"/><path d="M60 330 Q280 270 500 330" stroke="#e8e0d0" stroke-width="12" fill="none"/><path d="M60 330 L60 370 M180 306 L180 346 M300 298 L300 338 M420 306 L420 346 M500 330 L500 370" stroke="#7a6a58" stroke-width="7"/><circle cx="90" cy="215" r="50" fill="#245a3f"/><circle cx="470" cy="205" r="58" fill="#1f5238"/>`}
+];
+const ANN_TAIL={down:2,up:3}; // 駅ごとの4本: +0次は +1まもなく +2琴電琴平ゆき +3高松築港ゆき
+function annFile(idx,k){return String(11+idx*4+k).padStart(3,'0');}
+
+/* ===== DOM ===== */
+const $=id=>document.getElementById(id);
+const lcd=$('lcd');
+function fit(){const s=Math.min(innerWidth/1600,innerHeight/450);lcd.style.transform='scale('+s+')';}
+addEventListener('resize',fit);fit();
+
+/* 景色 */
+const photo=$('photo');
+SCENES.forEach((sc,i)=>{const s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('viewBox','0 0 560 450');s.innerHTML=sc.draw(i);if(i===0)s.classList.add('on');photo.insertBefore(s,$('photoCap'));});
+let scn=0;$('photoCap').textContent=SCENES[0].cap;
+setInterval(()=>{const a=photo.querySelectorAll('svg');a[scn].classList.remove('on');scn=(scn+1)%a.length;a[scn].classList.add('on');$('photoCap').textContent=SCENES[scn].cap;},9000);
+
+/* 落ち葉飾り */
+(function(){const c=['#e8903a','#d9663a','#f0b84a','#c9a24a','#e5793b'];let h='';
+ const L=(x,y,r,s,col)=>`<ellipse cx="0" cy="0" rx="${22*s}" ry="${9*s}" fill="${col}" transform="translate(${x} ${y}) rotate(${r})" opacity=".85"/>`;
+ for(let i=0;i<9;i++)h+=L(30+i*13,300-i*6+(i%2)*10,-40+i*9,1.1,c[i%5]);
+ for(let i=0;i<9;i++)h+=L(990-i*12,40+i*9,200+i*10,1.1,c[(i+2)%5]);
+ for(let i=0;i<7;i++)h+=L(1000-i*10,300-i*3,150-i*11,1,c[(i+1)%5]);
+ $('leaves').innerHTML=h;})();
+
+/* ===== 状態 ===== */
+let S={dir:'down',idx:0,phase:'stop',screen:'auto',seq:0,play:null};
+let lang=0,view='A',viewTimer=0,started=false,audioOn=false,curAudio=null,lastKey='';
+
+function dest(){return S.dir==='down'?LAST:0;}
+function nextOf(i){return S.dir==='down'?Math.min(LAST,i+1):Math.max(0,i-1);}
+function fitKanji(el,t){el.className=t.length>=7?'xl':(t.length>=5?'long':'');}
+
+function render(){
+  const st=ST[S.idx],dst=ST[dest()];
+  const ph=S.phase,lb=LBL[ph];
+  /* 見出し */
+  $('destN').textContent=dst[0];
+  /* 駅表示 */
+  let curI,nxtI;
+  if(ph==='stop'){curI=S.idx;nxtI=nextOf(S.idx);}
+  else{nxtI=S.idx;curI=S.dir==='down'?Math.max(0,S.idx-1):Math.min(LAST,S.idx+1);}
+  if(curI===nxtI)nxtI=nextOf(curI);
+  $('sCur').textContent=ST[curI][0];
+  $('sNext').innerHTML='<small>'+(curI===dest()&&ph==='stop'?'':'つぎは')+'</small>'+ST[nxtI][0];
+  $('sNext').style.visibility=(curI===dest()&&ph==='stop')?'hidden':'visible';
+  document.querySelector('.sline').style.visibility=$('sNext').style.visibility;
+  $('statJ').textContent=lb.j;
+  $('hira').textContent=st[1];
+  const k=$('kanji');k.textContent=st[0];fitKanji(k,st[0]);
+  $('badge').textContent=st[6];
+  renderLang();
+  renderMap();
+  setView();
+}
+function renderLang(){
+  const st=ST[S.idx],lb=LBL[S.phase];
+  const a=$('statO'),b=$('sub');
+  a.textContent=lang===0?lb.o[0]:lb.o[1];
+  b.textContent=lang===0?st[2]:st[3]+' / '+st[4]+' / '+st[5];
+  b.classList.toggle('small',lang!==0&&(st[3]+st[4]+st[5]).length>13);
+  if(lang!==0&&S.phase==='soon')a.textContent=lb.o[1];
+}
+function renderMap(){
+  const m=$('map');
+  const ph=S.phase,st=ST[S.idx];
+  let h='<div id="mapRow">';
+  for(let i=LAST;i>=0;i--){
+    let c='mc';
+    const passed=S.dir==='down'?(ph==='stop'?i<S.idx:i<S.idx):(ph==='stop'?i>S.idx:i>S.idx);
+    if(passed)c+=' pass';
+    if(i===S.idx)c+=(ph==='stop'?' cur':' nxt');
+    const n=ST[i][0];
+    h+=`<div class="${c}"><div class="nm${n.length>=5?' l5':''}">${n}</div><div class="kb">${ST[i][6]}</div></div>`;
+  }
+  h+='</div>';
+  const lbl=ph==='next'?'つぎの停車駅は':ph==='soon'?'まもなく':'ただいま';
+  const tail=ph==='stop'?'':'です';
+  h+=`<div id="mapBand"><span class="tag">${ST[dest()][0]} ゆき</span><span>▶▶▶ ${lbl}</span><span class="bx">${st[0]}</span><span>${tail}</span></div>`;
+  m.innerHTML=h;
+}
+function setView(){
+  const sc=S.screen;
+  let v;
+  if(sc==='map')v='B';else if(sc==='door')v='D';else if(sc==='idle')v='I';else if(sc==='station')v='A';
+  else v=(S.phase==='next'&&viewAuto==='B')?'B':'A';
+  show(v);
+}
+let viewAuto='A';
+function show(v){
+  view=v;
+  $('map').style.display=v==='B'?'block':'none';
+  $('door').style.display=v==='D'?'block':'none';
+  $('idle').style.display=v==='I'?'block':'none';
+  document.body.classList.toggle('full',v==='B'||v==='I');
+  ['stat','hira','kanji','rule','sub','badge','leaves'].forEach(id=>$(id).style.display=(v==='A')?'':'none');
+  $('head').style.display=(v==='B'||v==='I')?'none':'';
+  $('body').style.top=(v==='B'||v==='I')?'0':'98px';
+}
+setInterval(()=>{lang=(lang+1)%2;renderLang();},4000);
+setInterval(()=>{if(S.screen==='auto'&&S.phase==='next'){viewAuto=viewAuto==='A'?'B':'A';setView();}else if(viewAuto!=='A'){viewAuto='A';setView();}},8000);
+
+/* ===== 音声 ===== */
+function playFile(f){
+  if(!audioOn)return;
+  try{if(curAudio){curAudio.pause();}}catch(e){}
+  curAudio=new Audio('lcd-audio/'+f+'.mp3');
+  curAudio.play().catch(e=>banner('音声を再生できません: lcd-audio フォルダが同じ場所にあるか確認してください'));
+}
+function banner(t){const b=$('ban');b.textContent=t;b.style.display='block';clearTimeout(banner.t);banner.t=setTimeout(()=>b.style.display='none',6000);}
+function autoAnnounce(prev){
+  if(!started)return;
+  const key=S.dir+'|'+S.idx+'|'+S.phase;
+  if(key===lastKey)return;lastKey=key;
+  if(S.phase==='next')playFile(annFile(S.idx,0));
+  else if(S.phase==='soon')playFile(annFile(S.idx,1));
+  else if(S.idx!==dest()||S.idx===0||S.idx===LAST){
+    if(S.idx===dest()){return;} // 終点到着は車内放送なし
+    playFile(annFile(S.idx,S.dir==='down'?2:3));
+  }
+}
+
+/* ===== 状態の受信 ===== */
+let lastPlaySeq=-1;
+function apply(ns){
+  if(!ns)return;
+  const old=S;S=Object.assign({dir:'down',idx:0,phase:'stop',screen:'auto'},ns);
+  S.idx=Math.max(0,Math.min(LAST,+S.idx||0));
+  viewAuto='A';
+  render();
+  if(S.play&&S.play.n!==lastPlaySeq){lastPlaySeq=S.play.n;if(started){if(S.play.f==='stop'){try{curAudio&&curAudio.pause();}catch(e){}}else playFile(S.play.f);}}
+  else autoAnnounce();
+}
+
+/* ===== Firebase ===== */
+const firebaseConfig={
+  apiKey:"AIzaSyC4bwihhemETua3nJGlgnz6AXh5OAgoOnA",
+  authDomain:"renkei-9225d.firebaseapp.com",
+  databaseURL:"https://renkei-9225d-default-rtdb.firebaseio.com",
+  projectId:"renkei-9225d",
+  storageBucket:"renkei-9225d.firebasestorage.app",
+  messagingSenderId:"",appId:""
+};
+let db=null,ref=null,code=localStorage.getItem('lcd_code')||String(1000+Math.floor(Math.random()*9000));
+const bc=('BroadcastChannel' in window)?new BroadcastChannel('kotoden-lcd'):null;
+function setCode(c){code=c;try{localStorage.setItem('lcd_code',c);}catch(e){}$('codeShow').textContent=c;listen();}
+function listen(){
+  if(ref){try{ref.off();}catch(e){}}
+  if(!db)return;
+  ref=db.ref('lcd/'+code+'/state');
+  ref.on('value',s=>{const v=s.val();if(v)apply(v);},e=>{$('fbSt').textContent='⚠ データベースに接続できません: '+(e&&e.message||e);});
+}
+try{
+  if(typeof firebase==='undefined')throw new Error('Firebaseを読み込めません(オフライン、またはClaudeのプレビュー上)。ホスティング先でChromeで開いてください。');
+  firebase.initializeApp(firebaseConfig);db=firebase.database();
+  $('fbSt').textContent='✅ 接続OK。操作画面で上のコードを入力してください。';
+  setInterval(()=>{try{db.ref('lcd/'+code+'/info').set({t:firebase.database.ServerValue.TIMESTAMP,sw:innerWidth});}catch(e){}},10000);
+}catch(e){$('fbSt').textContent='⚠ '+e.message;}
+if(bc)bc.onmessage=ev=>{if(ev.data&&ev.data.code===code)apply(ev.data.state);};
+setCode(code);
+
+/* ===== 開始 ===== */
+$('codeSet').onclick=()=>{const v=$('codeIn').value.replace(/\D/g,'');if(v.length===4)setCode(v);};
+async function begin(){
+  started=true;audioOn=true;
+  $('start').style.display='none';
+  try{await document.documentElement.requestFullscreen();}catch(e){}
+  try{await navigator.wakeLock.request('screen');}catch(e){}
+  lastKey='';render();
+}
+$('goBtn').onclick=begin;
+let demoT=null;
+$('demoBtn').onclick=async()=>{
+  const dir=$('demoDir').value;await begin();
+  let idx=dir==='down'?0:LAST,ph='stop';
+  const step=()=>{
+    const e=dir==='down'?LAST:0;
+    if(ph==='stop'){if(idx===e){clearInterval(demoT);return;}idx=dir==='down'?idx+1:idx-1;ph='next';}
+    else ph=ph==='next'?'soon':'stop';
+    apply({dir,idx,phase:ph,screen:'auto'});
+  };
+  apply({dir,idx,phase:'stop',screen:'auto'});
+  clearInterval(demoT);demoT=setInterval(step,14000);
+};
+window.__apply=apply;window.__begin=()=>{started=true;audioOn=false;$('start').style.display='none';render();};
+apply(S);
+</script>
+</body>
+</html>
