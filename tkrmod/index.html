@@ -84,6 +84,12 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 .note strong{color:var(--gold)}
 footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;font-family:var(--mono);
   border-top:1px solid var(--border)}
+.log{list-style:none}
+.log li{display:grid;grid-template-columns:96px 1fr;gap:.8rem;padding:.7rem 0;border-bottom:1px dashed var(--border);font-size:13px;line-height:1.7}
+.log .d{font-family:var(--mono);font-size:11.5px;color:var(--cyan)}
+.plan li{margin:0 0 .5rem 1.2rem;font-size:13px;line-height:1.7;color:var(--text)}
+.tag{font-family:var(--mono);font-size:10.5px;padding:.1rem .5rem;border-radius:10px;background:rgba(255,82,82,.1);color:var(--gold);margin-left:.4rem}
+@media(max-width:560px){.log li{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -165,6 +171,32 @@ footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;f
         </div>
       </div>
     </div>
+  </div>
+
+  <div class="sec">
+    <h3>// 更新履歴</h3>
+    <div class="rule"></div>
+    <ul class="log">
+      <li><span class="d">2026-11-01</span><span>IruCaカード5種（フリー・スクール・キッズ・グリーン・ゴールド）と自動改札機のテクスチャ・モデルを追加。駅名標・のりば案内・道案内看板・シャッターなどの駅設備、1080形の3塗装と方向幕もビルドに統合</span></li>
+      <li><span class="d">2026-10-31</span><span>GitHubでの自動ビルドが成功。これまでの成果物をプロジェクトに一本化（TKRmod）</span></li>
+      <li><span class="d">2026-10 中旬</span><span>1080形（標準・旧塗装・京急風）、2000形の車体、IruCaチャージ機、運賃データ、ダイヤ設定、自動閉塞信号、踏切などを制作</span></li>
+      <li><span class="d">2026-09</span><span>運賃・改札・発車メロディ・駅チャイム・駅員/運転手/車掌NPC・総合サポートの原型を制作</span></li>
+      </ul>
+  </div>
+
+  <div class="sec">
+    <h3>// 更新予定</h3>
+    <div class="rule"></div>
+    <ul class="plan">
+      <li><b>動作確認</b> … マイクラ1.20.1＋MTRで起動して、不具合を直す（公開前の最優先）</li>
+      <li><b>券売機・定期券</b> … 券売機、定期券の発行、IruCa定期のアイテム化</li>
+      <li><b>発車標</b> … 瓦町（LED複数段）・綾川（LED）・伏石（LCD）の発車標と駅放送の連携</li>
+      <li><b>NPCの本格導入</b> … 駅員・運転手・車掌の勤務スケジュールと瓦町での交代</li>
+      <li><b>車両</b> … 1080形の車内、2000形の外観の仕上げ、MTRでの編成連結</li>
+      <li><b>記念IruCa</b> … 2000形運行開始記念IruCa（フリータイプ）から順に追加</li>
+      <li><b>ダウンロード公開</b> … 動作確認後にjarを公開</li>
+      </ul>
+    <p style="font-size:12px;color:var(--muted);margin-top:.8rem">※予定は変わることがあります。</p>
   </div>
 
   <div class="sec">
