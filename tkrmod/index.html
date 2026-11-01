@@ -90,6 +90,13 @@ footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;f
 .plan li{margin:0 0 .5rem 1.2rem;font-size:13px;line-height:1.7;color:var(--text)}
 .tag{font-family:var(--mono);font-size:10.5px;padding:.1rem .5rem;border-radius:10px;background:rgba(255,82,82,.1);color:var(--gold);margin-left:.4rem}
 @media(max-width:560px){.log li{grid-template-columns:1fr}}
+.tl{border-left:2px solid var(--border2);padding-left:1rem;margin-left:.3rem}
+.tl-item{margin-bottom:1.2rem}
+.tl-date{font-family:var(--mono);font-size:11.5px;color:var(--cyan)}
+.tl-item h4{font-size:14px;margin:.15rem 0 .25rem}
+.tl-item p{font-size:12.5px;color:var(--muted);line-height:1.75}
+.todo li{font-size:13px;color:var(--muted);line-height:1.9;margin-left:1.2rem}
+.todo li.doing{color:var(--text);font-weight:700}
 </style>
 </head>
 <body>
@@ -135,6 +142,24 @@ footer{padding:2.5rem 0;text-align:center;color:var(--muted2);font-size:11.5px;f
       <div class="feature"><div class="fi">🪧</div><div class="ft">駅の設備</div><div class="fd">駅名標、のりば案内、発車標、シャッター、踏切、自動閉塞信号</div></div>
       <div class="feature"><div class="fi">🛠️</div><div class="ft">総合サポート</div><div class="fd">複線ヘルパー、路線づくり、電車が止まった時のエラー案内</div></div>
       </div>
+  </div>
+
+  <div class="sec">
+    <h3>// 更新履歴</h3>
+    <div class="rule"></div>
+    <div class="tl">
+      <div class="tl-item"><div class="tl-date">2026-11-01</div><h4>IruCaカード・自動改札機のテクスチャを追加</h4><p>カード5種類（フリー・スクール・キッズ・グリーン・ゴールド）と、自動改札機の見た目・モデルを入れました。</p></div>
+      <div class="tl-item"><div class="tl-date">2026-10-31</div><h4>GitHubで自動ビルドできるようになりました</h4><p>駅名標・のりば案内・シャッター・信号機・踏切灯・チャージ機などをまとめて組み込み、ビルドが通りました。</p></div>
+      <div class="tl-item"><div class="tl-date">2026-10-17〜20</div><h4>1080形を追加</h4><p>3つの塗装（標準・旧塗装・京急風）、方向幕、車両別の設定を追加しました。</p></div>
+      <div class="tl-item"><div class="tl-date">2026-10-15〜16</div><h4>走りと駅のリアル化</h4><p>走行音、運転メニュー、駅名標、運賃データ、ダイヤ設定を実際のことでんに近づけました。</p></div>
+      </div>
+  </div>
+
+  <div class="sec">
+    <h3>// 更新予定</h3>
+    <div class="rule"></div>
+    <ul class="todo"><li class="doing">マインクラフトでの動作確認（これが終わったら公開）</li><li>1080形の車内・2000形の外観の組み込み</li><li>券売機・発車標・駅員NPC・駅名標の組み込み</li><li>MTRの編成連結・カスタム車両の読み込み</li><li>記念IruCa（2000形運行開始記念）</li><li>他の形式（1300形・600形・20形）と瓦町駅の構造</li></ul>
+    <p style="font-size:11.5px;color:var(--muted2);margin-top:.8rem">※予定は変わることがあります。</p>
   </div>
 
   <div class="sec">
