@@ -24,10 +24,16 @@ textarea{font:inherit;width:100%;min-height:70px;background:var(--p);color:var(-
 #hbox{background:var(--p);border:1px solid var(--b);border-radius:14px;max-width:520px;width:100%;max-height:85vh;overflow:auto;padding:14px}
 .hv{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--b);font-size:13px}.hv .i{flex:1}.hv small{color:var(--d);display:block}
 .hv button{font:inherit;font-size:12px;border:1px solid var(--b);background:var(--bg);color:var(--t);border-radius:8px;padding:6px 10px;cursor:pointer}
-</style></head><body>
+</style><script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
+</head><body>
 <div id="home">
  <h1>🧰 ツールまとめ</h1><div class="sub">タップで開きます。更新は下の「更新コード」に貼るだけ。</div>
  <div id="groups"></div>
+ <h2>端末をまたいで共有（同期）</h2>
+ <div class="sub">同じ「同期コード」を入れた端末どうしで、更新と履歴が自動で共有されます。6文字以上の、他人に推測されにくい文字にしてください。</div>
+ <div style="display:flex;gap:8px"><input id="syncCode" placeholder="同期コード（例：tani2026ab）" style="flex:1;font:inherit;background:var(--p);color:var(--t);border:1px solid var(--b);border-radius:10px;padding:10px"><button class="btn" id="syncBtn">同期する</button></div>
+ <div id="syncSt" class="sub"></div>
  <h2>更新コード</h2>
  <textarea id="code" placeholder="HUB1. で始まる更新コードを貼る"></textarea>
  <div style="margin-top:8px"><button class="btn" id="apply">更新する</button></div>
@@ -41,7 +47,7 @@ textarea{font:inherit;width:100%;min-height:70px;background:var(--p);color:var(-
 <script>
 const $=id=>document.getElementById(id);
 const BUILTIN=JSON.parse($('builtin').textContent); // [{id,name,group,desc,html}]
-const BUILD='1';
+const BUILD='2';
 // ---------- IndexedDB ----------
 let _db=null;
 function idb(){return _db||(_db=new Promise((res,rej)=>{const r=indexedDB.open('toolhub',1);r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('vers',{keyPath:'k'});d.createObjectStore('meta',{keyPath:'id'});};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}));}
@@ -96,7 +102,7 @@ function showHist(id){
   $('hbox').innerHTML='<b>'+esc(t.name)+' の履歴</b><div class="sub">現行: v'+cur+'</div>'+vs.map(v=>'<div class="hv"><div class="i"><b>v'+v.n+'</b>'+(v.n===cur?' <span class="badge">現行</span>':'')+'<small>'+fmt(v.ts)+' '+esc(v.note||'')+'</small></div><button data-o="'+v.n+'">開く</button>'+(v.n!==cur?'<button data-c="'+v.n+'">これを現行に</button>':'')+'</div>').join('')+'<div style="margin-top:10px;text-align:right"><button class="btn" id="hclose">閉じる</button></div>';
   $('hist').classList.add('on');
   $('hbox').querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{$('hist').classList.remove('on');openTool(id,+b.dataset.o);});
-  $('hbox').querySelectorAll('[data-c]').forEach(b=>b.onclick=async()=>{await tx('meta','readwrite',s=>s.put({id,cur:+b.dataset.c}));META[id]={id,cur:+b.dataset.c};renderHome();showHist(id);});
+  $('hbox').querySelectorAll('[data-c]').forEach(b=>b.onclick=async()=>{await tx('meta','readwrite',s=>s.put({id,cur:+b.dataset.c}));META[id]={id,cur:+b.dataset.c};try{await syncPushCur(id,+b.dataset.c);}catch(e){}renderHome();showHist(id);});
   $('hclose').onclick=()=>$('hist').classList.remove('on');
 }
 // ---------- 更新コード ----------
@@ -121,15 +127,63 @@ async function applyCode(code){
   if(p.info||!existing)rec.info=p.info||{name:p.id,group:'そのほか',desc:''};
   await tx('vers','readwrite',s=>s.put(rec));await tx('meta','readwrite',s=>s.put({id:p.id,cur:n}));
   VERS.push(rec);META[p.id]={id:p.id,cur:n};
+  try{await syncPushVersion(rec);await syncPushCur(p.id,n);}catch(e){}
   return (existing?existing.name:rec.info.name)+' を v'+n+' に更新しました'+(p.note?'\n'+p.note:'');
 }
 $('apply').onclick=async()=>{
   const v=$('code').value.trim();if(!v)return;$('msg').textContent='更新中…';
   try{$('msg').textContent='✅ '+await applyCode(v);$('code').value='';renderHome();}catch(e){$('msg').textContent='❌ '+e.message;}
 };
+
+// ---------- 同期（Firebase） ----------
+let SYNC={code:'',db:null,on:false};
+function syncKey(id,n){return id+'__'+n;}
+function sdb(){
+  if(SYNC.db)return SYNC.db;
+  if(typeof firebase==='undefined')throw new Error('Firebaseを読み込めません（https・ネット接続が必要）');
+  if(!firebase.apps.length)firebase.initializeApp({apiKey:"AIzaSyC4bwihhemETua3nJGlgnz6AXh5OAgoOnA",authDomain:"renkei-9225d.firebaseapp.com",databaseURL:"https://renkei-9225d-default-rtdb.firebaseio.com",projectId:"renkei-9225d"});
+  return SYNC.db=firebase.database();
+}
+const sroot=()=>sdb().ref('hub_sync/'+SYNC.code);
+async function putLocal(rec){ if(VERS.some(v=>v.k===rec.k))return false; await tx('vers','readwrite',s=>s.put(rec)); VERS.push(rec); return true; }
+async function syncPushVersion(rec){
+  if(!SYNC.on)return;
+  const k=syncKey(rec.id,rec.n);
+  await sroot().child('html/'+k).set(rec.html);
+  await sroot().child('idx/'+k).set({id:rec.id,n:rec.n,ts:rec.ts,note:rec.note||'',info:rec.info||null});
+}
+async function syncPushCur(id,n){ if(SYNC.on)await sroot().child('cur/'+id).set({n,ts:Date.now()}); }
+async function syncStart(code){
+  SYNC.code=code;SYNC.on=false;$('syncSt').textContent='同期中…';
+  try{
+    const r=sroot();
+    // 1) まず、この端末にしかない更新をアップロード
+    const idx=(await r.child('idx').once('value')).val()||{};
+    for(const v of VERS){ if(!idx[syncKey(v.id,v.n)]){ SYNC.on=true; await syncPushVersion(v); } }
+    for(const id of Object.keys(META)){ const c=(await r.child('cur/'+id).once('value')).val(); if(!c)await r.child('cur/'+id).set({n:META[id].cur,ts:Date.now()}); }
+    SYNC.on=true;
+    // 2) 以降は常に監視：他の端末の更新を取り込む
+    r.child('idx').on('child_added',async s=>{
+      const m=s.val(),k=syncKey(m.id,m.n);
+      if(VERS.some(v=>v.k===(m.id+'#'+m.n)))return;
+      const html=(await r.child('html/'+k).once('value')).val();if(html==null)return;
+      const rec={k:m.id+'#'+m.n,id:m.id,n:m.n,ts:m.ts,note:m.note||'',html};if(m.info)rec.info=m.info;
+      if(await putLocal(rec)){renderHome();$('syncSt').textContent='✅ 同期しました（'+new Date().toLocaleTimeString()+'）';}
+    });
+    r.child('cur').on('value',async s=>{
+      const c=s.val()||{};let ch=false;
+      for(const id of Object.keys(c)){ if(!META[id]||META[id].cur!==c[id].n){ META[id]={id,cur:c[id].n}; await tx('meta','readwrite',st=>st.put(META[id])); ch=true; } }
+      if(ch)renderHome();
+    });
+    try{localStorage.setItem('hub_sync',code);}catch(e){}
+    $('syncSt').textContent='✅ 同期コード「'+code+'」で共有中';
+  }catch(e){SYNC.on=false;$('syncSt').textContent='❌ 同期できません: '+e.message+'（Firebaseのルール期限切れの可能性）';}
+}
+$('syncBtn').onclick=()=>{const v=$('syncCode').value.trim();if(!/^[A-Za-z0-9_-]{6,}$/.test(v)){$('syncSt').textContent='❌ 6文字以上の英数字で入れてください';return;}syncStart(v);};
 // ---------- 起動 ----------
 (async()=>{
   await load();renderHome();
+  try{const sc=localStorage.getItem('hub_sync');if(sc){$('syncCode').value=sc;syncStart(sc);}}catch(e){}
   const h=location.hash.slice(1);if(h){const [id,n]=h.split('@');if(toolIds().includes(id)){history.replaceState(null,'','#');openTool(id,n?+n:undefined);}}
 })();
 window.__hub={applyCode,versions,curN,curHtml,openTool,load,renderHome};
